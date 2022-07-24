@@ -26,8 +26,8 @@ public class TDATParser {
         idx = 0;
         float red, green, blue, alpha;
         float x, y;
-        Deque<ComplexShape> stack = new ArrayDeque();
-        ComplexShape currentShape = new ComplexShape();
+        Deque<ComplexShape> stack = new ArrayDeque<>();
+        ComplexShape currentShape = new ComplexShape("");
         //stack.push(currentShape);
 
         while (idx < data.length) {
@@ -38,7 +38,7 @@ public class TDATParser {
                     if (nc == 'o') {
                         // open group
                         stack.push(currentShape);
-                        currentShape = new ComplexShape();
+                        currentShape = new ComplexShape("");
                     } else if (nc == 'c') {
                         // close group
                         for (int i=0; i<stack.size(); i++) {
@@ -84,7 +84,7 @@ public class TDATParser {
                     n = nextByte();
                     for (int i=0; i<n; i++)
                         label += nextChar();
-                    currentShape.setId(label);
+                    //currentShape.setId(label);
                     break;
                 default:
                     System.out.println(PApplet.hex(idx) + ' ' + c);

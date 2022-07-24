@@ -1,10 +1,10 @@
 package gwel.game.anim;
 
 import com.badlogic.gdx.utils.JsonValue;
-import processing.core.PApplet;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+
 
 /**
  * Class used to edit animations in SgAnimator (Animation tool for Processing)
@@ -39,7 +39,6 @@ public class PostureCollection {
     }
 
     public Posture getPosture(String postureName) {
-        // Not optimal (maybe should use an HashMap for fast lookup)
         for (Posture posture : postures) {
             if (posture.name.equals(postureName))
                 return posture;

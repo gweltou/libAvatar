@@ -3,6 +3,7 @@ package gwel.game.graphics;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector2;
 import processing.core.PApplet;
+import processing.core.PConstants;
 
 
 /**
@@ -18,6 +19,8 @@ import processing.core.PApplet;
 
 public class PRenderer extends Renderer {
 	public final static String VERSION = "##library.prettyVersion##";
+	// parent is a reference to the parent sketch
+	private final PApplet parent;
 
 	private ComplexShape selected;
 	static public final Color selectedColor = new Color(0.0f, 1.0f, 0.0f, 0.6f);
@@ -25,8 +28,8 @@ public class PRenderer extends Renderer {
 
 
 	public PRenderer(PApplet parent) {
-		super(parent);
-
+		super();
+		this.parent = parent;
 		System.out.println("Game renderer initiated..." + " Version " + VERSION);
 	}
 
@@ -59,7 +62,7 @@ public class PRenderer extends Renderer {
 			parent.vertex(point.x, point.y);
 		}
 
-		parent.endShape(parent.CLOSE);
+		parent.endShape(PConstants.CLOSE);
 	}
 
 
@@ -69,11 +72,13 @@ public class PRenderer extends Renderer {
 			parent.strokeWeight(1);
 			parent.noFill();
 		} else {
-			triangles(vertices); // Weird. Why is it not using indices ?
-			return;
+			parent.noStroke();
+			parent.fill(Color.argb8888(color));
+			//triangles(vertices);
+			//return;
 		}
 
-		parent.beginShape(parent.TRIANGLES);
+		parent.beginShape(PConstants.TRIANGLES);
 		int idx;
 		Vector2 point = new Vector2();
 		for (int i = 0; i < indices.length; ) {
@@ -96,42 +101,22 @@ public class PRenderer extends Renderer {
 	}
 
 
-	/**
-	 * Delete if outside SgAnimator
-	 */
-	/*
 	public void circle(float x, float y, float r) {
 		Vector2 point = new Vector2(x, y);
 		Vector2 radiusPoint = new Vector2(x+r, y);
 
 		if (wireframe) {
-			myParent.stroke(Color.argb8888(color));
-			myParent.noFill();
+			parent.stroke(Color.argb8888(color));
+			parent.noFill();
 		} else {
-			myParent.noStroke();
-			myParent.fill(Color.argb8888(color));
-		}
-
-		transform.applyTo(point);
-		transform.applyTo(radiusPoint);
-		r = point.dst(radiusPoint);
-		myParent.circle(point.x, point.y, 2*r);
-	}*/
-
-
-	/**
-	 * Delete if outside SgAnimator
-	 */
-	public void drawPivot() {
-		if (selected != null) {
-			Vector2 point = selected.getLocalOrigin();
-			selected.getAbsoluteTransform().applyTo(point);
-			getTransform().applyTo(point);
-
 			parent.noStroke();
-			parent.fill(0, 0, 255);
-			parent.circle(point.x, point.y, 8);
+			parent.fill(Color.argb8888(color));
 		}
+
+		getTransform().applyTo(point);
+		getTransform().applyTo(radiusPoint);
+		r = point.dst(radiusPoint);
+		parent.circle(point.x, point.y, 2*r);
 	}
 
 

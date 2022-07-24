@@ -8,5 +8,6 @@ public interface Shape extends Drawable {
     void hardTransform(Affine2 transform);
     boolean contains(Vector2 p);
     boolean contains(float x, float y);
+    short getNumTris();
     Shape copy();
 }

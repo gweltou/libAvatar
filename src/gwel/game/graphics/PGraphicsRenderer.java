@@ -3,19 +3,21 @@ package gwel.game.graphics;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Vector2;
 import processing.core.PApplet;
+import processing.core.PConstants;
 import processing.core.PGraphics;
 import processing.core.PImage;
-import processing.opengl.PGraphicsOpenGL;
+
 
 public class PGraphicsRenderer extends Renderer {
-
-    //private final PApplet parent;
+    // parent is a reference to the parent sketch
+    private final PApplet parent;
     private PGraphics buffer;
     private final Color backgroundColor = new Color(1f, 1f, 1f, 0f);
 
 
     public PGraphicsRenderer(PApplet parent) {
-        super(parent);
+        super();
+        this.parent = parent;
     }
 
 
@@ -52,7 +54,7 @@ public class PGraphicsRenderer extends Renderer {
             getTransform().applyTo(point);
             buffer.vertex(point.x, point.y);
         }
-        buffer.endShape(parent.CLOSE);
+        buffer.endShape(PConstants.CLOSE);
     }
 
 
@@ -81,5 +83,19 @@ public class PGraphicsRenderer extends Renderer {
         }
         buffer.endShape();
          */
+    }
+
+
+    public void circle(float x, float y, float r) {
+        Vector2 point = new Vector2(x, y);
+        Vector2 radiusPoint = new Vector2(x+r, y);
+
+        getTransform().applyTo(point);
+        getTransform().applyTo(radiusPoint);
+        r = point.dst(radiusPoint);
+        buffer.fill(Color.argb8888(color));
+        buffer.beginDraw();
+        buffer.circle(point.x, point.y, 2*r);
+        buffer.endDraw();
     }
 }

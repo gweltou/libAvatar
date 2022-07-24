@@ -124,6 +124,11 @@ public class DrawablePolygon implements Shape {
     }
 
 
+    public short getNumTris() {
+        return (short) (indices.length / 3);
+    }
+
+
     public DrawablePolygon copy() {
         DrawablePolygon polygon = new DrawablePolygon(vertices.clone(), indices.clone());
         polygon.setColor(color);

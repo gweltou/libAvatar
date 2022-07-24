@@ -64,7 +64,7 @@ public class TFEaseFromTo extends TimeFunction {
     @Override
     public void reset() {
         super.reset();
-        state = RUNNING;
+        state = DELAY;
         distance = (float) params[1].getValue() - (float) params[0].getValue();
         interpolation = Animation.getInterpolation((String) params[4].getValue());
         value = (float) params[0].getValue();

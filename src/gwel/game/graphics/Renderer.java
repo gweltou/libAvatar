@@ -10,15 +10,12 @@ import java.util.ArrayDeque;
 
 
 public abstract class Renderer {
-    // parent is a reference to the parent sketch
-    protected final PApplet parent;
     private final MatrixStack matrixStack = new MatrixStack();
     public final Color color = new Color();
     public final ArrayDeque<float[]> colorStack = new ArrayDeque<>();
 
 
-    protected Renderer(PApplet parent) {
-        this.parent = parent;
+    protected Renderer() {
         colorStack.push(new float[] {0f, 0f, 0f, 1f});
     }
 
@@ -51,7 +48,6 @@ public abstract class Renderer {
     public void popColorMod() { colorStack.pop(); }
 
 
-
     public void translate(float x, float y) {
         matrixStack.transform.translate(x, y);
     }
@@ -70,11 +66,10 @@ public abstract class Renderer {
 
     public void popMatrix() { matrixStack.pop(); }
 
-    public Affine2 getTransform() {
-        return new Affine2(matrixStack.transform);
-    }
+    public Affine2 getTransform() { return new Affine2(matrixStack.transform); }
 
-    public void triangles(float[] vertices) {}
 
-    public void triangles(float[] vertices, short[] indices) {}
+    public abstract void triangles(float[] vertices, short[] indices);
+
+    public abstract void circle(float x, float y, float r);
 }

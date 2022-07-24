@@ -1,3 +1,7 @@
+2.0
+  * TimeFunction EaseFromTo start in DELAY state
+  * Fixed ComplexShape.contains() bug when scaleX or scaleY is 0
+
 1.4
   * Renamed MyRenderer to PRenderer
   * New abstract class : Renderer

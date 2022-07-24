@@ -4,7 +4,7 @@ public class TFParam<T> {
     public String name;
     public int type;
     public String unit;
-    public T value;
+    private T value;
     public float min, max;
     static public final int SLIDER = 0;
     static public final int TOGGLE = 1;
@@ -27,6 +27,7 @@ public class TFParam<T> {
     public void setValue(T value) {
         this.value = value;
     }
+
     public T getValue() {
         return value;
     }

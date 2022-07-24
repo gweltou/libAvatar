@@ -1,41 +1,42 @@
 package gwel.game.entities;
 
-import com.badlogic.gdx.math.*;
+import com.badlogic.gdx.math.Affine2;
+import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.JsonWriter;
 import gwel.game.anim.*;
 import gwel.game.graphics.*;
+import gwel.game.utils.BoundingBox;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Set;
 
 
-public class Avatar {
-    public ComplexShape shape;
+public class Avatar2 {
+    private ComplexShape2 shape;
     public boolean paused = false;
     private final Vector2 position = new Vector2();
     private final Affine2 transform = new Affine2();
     public PostureCollection postures;
-    private ComplexShape[] partsList;
-    public ArrayList<Shape> physicsShapes;
-    private float timeFactor = 1f;
+    private ComplexShape2[] partsList;
+    public ArrayList<Shape> physicsShapes = new ArrayList<>();
 
     private boolean flipX = false;
     private boolean flipY = false;
     private float scaleX = 1;
     private float scaleY = 1;
     private float angle = 0;
+    private float timeFactor = 1f;
 
     // V 2.0
-    private ArrayList<TimeFunction> timeFunctions;
+    private BufferedRenderer bufferedRenderer;
+    private ArrayList<TimeFunction> timeFunctions = new ArrayList<>();
     private Posture2 currentPosture;
 
-
-    public Avatar() {
-        physicsShapes = new ArrayList<>();
-        //timeFunctions = new TimeFunction[0];
-    }
 
 
     public void setPosition(float x, float y) { position.set(x, y); }
@@ -47,21 +48,10 @@ public class Avatar {
 
     public float getAngle() { return angle; }
 
-    /**
-     * Scale geometry and animation data
-     *
-     * @param s
-     */
     public void scale(float s) {
         scale(s, s);
     }
 
-    /**
-     * Scale geometry and animation data
-     *
-     * @param sx
-     * @param sy
-     */
     public void scale(float sx, float sy) {
         scaleX *= sx;
         scaleY *= sy;
@@ -97,7 +87,7 @@ public class Avatar {
 
 
     /**
-     * Check if a world point is inside the avatar's shape
+     * Check if a world point is inside the avatar's physic shape
      * A first draw call must have been made to initialise the transform matrix
      *
      * @param x
@@ -115,15 +105,17 @@ public class Avatar {
     }
 
 
-    public void setShape(ComplexShape root) {
+    public void setShape(ComplexShape2 root) {
         shape = root;
-        partsList = root.getPartsList().toArray(new ComplexShape[0]);
+        partsList = root.getPartsList().toArray(new ComplexShape2[0]);
+        bufferedRenderer = new BufferedRenderer();
+        bufferedRenderer.setBufferSize(shape.getNumTris());
     }
 
-    public ComplexShape getShape() { return shape; }
+    public ComplexShape2 getShape() { return shape; }
 
 
-    public ComplexShape[] getPartsList() { return partsList; }
+    public ComplexShape2[] getPartsList() { return partsList; }
 
 
     public String[] getPartsName() {
@@ -141,13 +133,13 @@ public class Avatar {
     // Should be used by animation editor only (slow)
     public void setPosture(HashMap<String, Animation[]> posture, float transition) {
         Set<String> ids = posture.keySet();
-        for (ComplexShape part : partsList) {
+        for (ComplexShape2 part : partsList) {
             if (ids.contains(part.getId())) {
                 Animation[] animList;
                 animList = posture.get(part.getId());
-                part.transitionAnimation(animList, transition);
+                //part.transitionAnimation(animList, transition);
             } else {
-                part.transitionAnimation(new Animation[0], transition);
+                //part.transitionAnimation(new Animation[0], transition);
             }
         }
     }
@@ -172,23 +164,14 @@ public class Avatar {
         for (int i = 0; i < partsList.length; i++) {
             Animation[] animList = posture.groups[i];
             if (animList != null) {
-                partsList[i].setAnimationList(animList);
+                //partsList[i].setAnimationList(animList);
             } else {
-                partsList[i].clearAnimationList();
+                //partsList[i].clearAnimationList();
             }
         }
     }
 
 
-    /**
-     * V 2.0
-     */
-    private void addTimeFunction(TimeFunction fn) {
-        if (timeFunctions == null)
-            timeFunctions = new ArrayList<>();
-
-        timeFunctions.add(fn);
-    }
 
     // Play every animation from the animationCollection sequentially
     public void playSequentially() {
@@ -198,40 +181,17 @@ public class Avatar {
 
     public void update(float dtime) {
         if (!paused)
-            shape.update(timeFactor * dtime);
-    }
-
-
-    /**
-     * V 2.0
-     *
-     * @param dtime
-     */
-    public void update2(float dtime) {
-        // Actualiser les fonctions d'animation de la posture actuelle
-        currentPosture.update(dtime);
+            currentPosture.update(timeFactor * dtime);
     }
 
     public void resetAnimation() {
-        shape.reset();
+        currentPosture.reset();
     }
 
-    public void clearAnimation() {
+    /*public void clearAnimation() {
         for (ComplexShape part : partsList)
             part.clearAnimationList();
-    }
-
-
-    /**
-     * V 2.0
-     *
-     * @param shape
-     * @return
-     */
-    public Affine2 getAbsoluteTransform(ComplexShape shape) {
-
-        return new Affine2();
-    }
+    }*/
 
 
     public void draw(Renderer renderer) {
@@ -247,9 +207,9 @@ public class Avatar {
     /**
      * Delete if outside Processing editor
      */
-    public void drawSelectedOnly(PRenderer renderer) {
+    /*public void drawSelectedOnly(PRenderer renderer) {
         shape.drawSelectedOnly(renderer);
-    }
+    }*/
 
 
     /**
@@ -257,8 +217,8 @@ public class Avatar {
      *
      * @return a new Avatar
      */
-    public Avatar copy() {
-        Avatar newAvatar = new Avatar();
+    public Avatar2 copy() {
+        Avatar2 newAvatar = new Avatar2();
         newAvatar.shape = shape.copy();
         for (Shape shape : physicsShapes)
             newAvatar.physicsShapes.add(shape.copy());
@@ -273,16 +233,16 @@ public class Avatar {
      *
      * @return a cloned Avatar
      */
-    public Avatar clone() {
+    public Avatar2 clone() {
         return null;
     }
 
 
-    public static Avatar fromFile(File file) {
+    public static Avatar2 fromFile(File file) {
         return fromFile(file, true);
     }
 
-    public static Avatar fromFile(File file, boolean loadAnim) {
+    public static Avatar2 fromFile(File file, boolean loadAnim) {
         JsonValue json;
         try {
             InputStream in = new FileInputStream(file);
@@ -298,10 +258,9 @@ public class Avatar {
 
         if (json.has("fmt_ver")) {
             String versionString = json.getString("fmt_ver");
-            System.out.println(versionString);
             if (versionString.equals("1.0"))
                 return load_v1(json, loadAnim);
-            else if (versionString.equals("2.0"))
+            else if (versionString.equals("2"))
                 return load_v2(json, loadAnim);
             else
                 return load_v1(json, loadAnim);
@@ -310,14 +269,14 @@ public class Avatar {
         }
     }
 
-    private static Avatar load_v1(JsonValue json, boolean loadAnim) {
+    private static Avatar2 load_v1(JsonValue json, boolean loadAnim) {
         System.out.println("SGA file version 1");
-        Avatar avatar = new Avatar();
+        Avatar2 avatar = new Avatar2();
 
         // Load shape first
         if (json.has("geometry")) {
             JsonValue jsonGeometry = json.get("geometry");
-            avatar.setShape(ComplexShape.fromJson(jsonGeometry));
+            avatar.setShape(ComplexShape2.fromJson(jsonGeometry));
         } else {
             System.out.println("No geometry data found !");
             return null;
@@ -349,60 +308,69 @@ public class Avatar {
         return avatar;
     }
 
-    private static Avatar load_v2(JsonValue json, boolean loadAnim) {
+    private static Avatar2 load_v2(JsonValue json, boolean loadAnim) {
         System.out.println("SGA file version 2");
-        List<Avatar> avatars = new ArrayList<>();
+        Avatar2 avatar = new Avatar2();
 
-        if (json.has("avatars")) {
-            JsonValue jsonAvatars = json.get("avatars");
-            for (JsonValue jsonAvatar : jsonAvatars.iterator()) {
-                Avatar avatar = new Avatar();
-
-                // Load shape first
-                if (jsonAvatar.has("geometry")) {
-                    JsonValue jsonGeometry = jsonAvatar.get("geometry");
-                    avatar.setShape(ComplexShape.fromJson(jsonGeometry));
-                } else {
-                    System.out.println("No geometry data found !");
-                }
-
-                if (json.has("box2d")) {
-                    for (JsonValue jsonShape : json.get("box2d")) {
-                        if (jsonShape.getString("type").equals("circle")) {
-                            DrawableCircle circle = new DrawableCircle(0, 0, 0);
-                            circle.setCenter(jsonShape.getFloat("x"), jsonShape.getFloat("y"));
-                            circle.setRadius(jsonShape.getFloat("radius"));
-                            avatar.physicsShapes.add(circle);
-                        } else if (jsonShape.getString("type").equals("polygon")) {
-                            DrawablePolygon polygon = new DrawablePolygon();
-                            polygon.setVertices(jsonShape.get("vertices").asFloatArray());
-                            avatar.physicsShapes.add(polygon);
-                        }
-                    }
-                }
-
-                avatars.add(avatar);
-            }
-        }
-
-        Avatar avatar;
-        if (avatars.size() > 0)
-            avatar = avatars.get(0);
-        else
+        // Load shape first
+        if (json.has("geometry")) {
+            JsonValue jsonGeometry = json.get("geometry");
+            avatar.setShape(ComplexShape2.fromJson(jsonGeometry));
+        } else {
+            System.out.println("No geometry data found !");
             return null;
+        }
 
         if (loadAnim && json.has("animation")) {
             JsonValue jsonAnimation = json.get("animation");
-            PostureCollection postureCollection = PostureCollection.fromJson(jsonAnimation, avatar.getPartsName());
-            avatar.postures = postureCollection;
-            if (postureCollection.size() > 0) {
-                avatar.loadPosture(0);
+
+            if (jsonAnimation.has("functions")) {
+                for (JsonValue fn : jsonAnimation.get("functions")) {
+                    avatar.timeFunctions.add(TimeFunction.fromJson(fn));
+                }
+            }
+            if (jsonAnimation.has("postures")) {
+                for (JsonValue jsonPosture : jsonAnimation.get("postures")) {
+                    Posture2 posture = new Posture2();
+                    posture.setName(jsonPosture.getString("name"));
+                    posture.setDuration(jsonPosture.getFloat("duration"));
+                    posture.setPostureTree(PostureTree.buildTree(avatar.getShape()));
+                    for (JsonValue jsonPart : jsonPosture.get("parts")) {
+                        String partId = jsonPart.getString("part_id");
+                        ComplexShape2 cs = avatar.getShape().getById(partId);
+                        //PostureTree pt = postureTree.findById(partId);
+                        for (JsonValue jsonAnim : jsonPart.get("animations")) {
+                            int fnIdx = jsonAnim.getInt("function_id");
+                            Animation2 anim = new Animation2(avatar.timeFunctions.get(fnIdx));
+                            int axe = Arrays.asList(Animation2.axeNames).indexOf(jsonAnim.getString("axe"));
+                            anim.setAxe(axe);
+                            anim.setAmp(jsonAnim.getFloat("amp"));
+                            anim.setInv(jsonAnim.getBoolean("inv"));
+                            posture.addAnimation(cs, anim);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (json.has("box2d")) {
+            for (JsonValue jsonShape : json.get("box2d")) {
+                if (jsonShape.getString("type").equals("circle")) {
+                    DrawableCircle circle = new DrawableCircle(0, 0, 0);
+                    circle.setCenter(jsonShape.getFloat("x"), jsonShape.getFloat("y"));
+                    circle.setRadius(jsonShape.getFloat("radius"));
+                    avatar.physicsShapes.add(circle);
+                } else if (jsonShape.getString("type").equals("polygon")) {
+                    DrawablePolygon polygon = new DrawablePolygon();
+                    polygon.setVertices(jsonShape.get("vertices").asFloatArray());
+                    avatar.physicsShapes.add(polygon);
+                }
             }
         }
         return avatar;
     }
 
-    public void saveFile(String filename) { saveFile_v1(filename); }
+    public void saveFile(String filename) { saveFile_v2(filename); }
 
     public void saveFile_v1(String filename) {
         JsonValue json = new JsonValue(JsonValue.ValueType.object);
@@ -434,7 +402,7 @@ public class Avatar {
             jsonPhysicsShapes.addChild(jsonShape);
         }
         json.addChild("box2d", jsonPhysicsShapes);
-        json.addChild("geometry", shape.toJson(false));
+        json.addChild("geometry", shape.toJson());
 
         try {
             FileWriter writer = new FileWriter(filename);
@@ -445,5 +413,61 @@ public class Avatar {
             System.out.println("An error occurred while writing to " + filename);
             e.printStackTrace();
         }
+    }
+
+    public void saveFile_v2(String filename) {
+        JsonValue json = new JsonValue(JsonValue.ValueType.object);
+        json.addChild("lib_ver", new JsonValue(PRenderer.version()));
+        json.addChild("fmt_ver", new JsonValue("2.0"));
+
+        if (postures != null) {
+            json.addChild("animation", postures.toJson(getPartsName()));
+        }
+
+        // Box2D shapes
+        JsonValue jsonPhysicsShapes = new JsonValue(JsonValue.ValueType.array);
+        for (Shape shape : physicsShapes) {
+            JsonValue jsonShape = new JsonValue(JsonValue.ValueType.object);
+            if (shape.getClass() == DrawablePolygon.class) {
+                jsonShape.addChild("type", new JsonValue("polygon"));
+                JsonValue jsonVertices = new JsonValue(JsonValue.ValueType.array);
+                float[] vertices = ((DrawablePolygon) shape).getVertices();
+                for (float vert : vertices)
+                    jsonVertices.addChild(new JsonValue(vert));
+                jsonShape.addChild("vertices", jsonVertices);
+            } else if (shape.getClass() == DrawableCircle.class) {
+                DrawableCircle circle = (DrawableCircle) shape;
+                jsonShape.addChild("type", new JsonValue("circle"));
+                jsonShape.addChild("x", new JsonValue(circle.getCenter().x));
+                jsonShape.addChild("y", new JsonValue(circle.getCenter().y));
+                jsonShape.addChild("radius", new JsonValue(circle.getRadius()));
+            }
+            jsonPhysicsShapes.addChild(jsonShape);
+        }
+
+        JsonValue jsonAvatar = new JsonValue(JsonValue.ValueType.object);
+        jsonAvatar.addChild("box2d", jsonPhysicsShapes);
+        jsonAvatar.addChild("geometry", shape.toJson());
+
+        JsonValue jsonAvatars = new JsonValue(JsonValue.ValueType.array);
+        jsonAvatars.addChild(jsonAvatar);
+
+        json.addChild("avatars", jsonAvatars);
+
+        try {
+            FileWriter writer = new FileWriter(filename);
+            writer.write(json.prettyPrint(JsonWriter.OutputType.json, 80));
+            writer.close();
+            System.out.println("Avatar data saved to " + filename);
+        } catch (IOException e) {
+            System.out.println("An error occurred while writing to " + filename);
+            e.printStackTrace();
+        }
+    }
+
+
+    public String toString() {
+        String s = String.format(" []");
+        return super.toString() + s;
     }
 }

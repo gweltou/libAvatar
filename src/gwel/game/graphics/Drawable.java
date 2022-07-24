@@ -2,6 +2,7 @@ package gwel.game.graphics;
 
 
 import com.badlogic.gdx.graphics.Color;
+import gwel.game.anim.PostureTree;
 import gwel.game.utils.MatrixStack;
 
 
