@@ -16,7 +16,7 @@ public class PostureTree {
     private final float[] colorMod = new float[] {0f, 0f, 0f, 1f};
 
 
-    public PostureTree(PostureTree parent, ComplexShape2 shape) {
+    public PostureTree(ComplexShape2 shape, PostureTree parent) {
         this.parent = parent;
         this.shape = shape;
     }
@@ -33,10 +33,10 @@ public class PostureTree {
     public float[] getColorMod() { return colorMod; }
 
 
-    public static PostureTree buildTree(ComplexShape2 shape) {
-        PostureTree pt = new PostureTree(null, shape);
+    public static PostureTree buildTree(ComplexShape2 shape, PostureTree parent) {
+        PostureTree pt = new PostureTree(shape, parent);
         for (ComplexShape2 child : shape.getChildren()) {
-            pt.children.add(new PostureTree(pt, child));
+            pt.children.add(PostureTree.buildTree(child, pt));
         }
         return pt;
     }

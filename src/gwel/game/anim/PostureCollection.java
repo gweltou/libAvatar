@@ -57,7 +57,7 @@ public class PostureCollection {
     public static PostureCollection fromJson(JsonValue jsonPostureArray, String[] partsName) {
         PostureCollection animCollection = new PostureCollection();
 
-        for (JsonValue jsonPosture : jsonPostureArray.iterator()) {
+        for (JsonValue jsonPosture : jsonPostureArray) {
             Posture posture = new Posture();
             posture.name = jsonPosture.getString("name");
             posture.duration = jsonPosture.getFloat("duration", 0f);

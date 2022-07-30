@@ -51,8 +51,8 @@ public class Posture2 {
     /**
      * Used by SGAnimator
      */
-    public Animation2 getAnimation(ComplexShape2 shape, int idx) {
-        PostureTree pt = postureTree.findByShape(shape);
+    public Animation2 getAnimation(String partId, int idx) {
+        PostureTree pt = postureTree.findById(partId);
         if (pt == null)
             return null;
         return pt.getAnimations().get(idx);
@@ -62,9 +62,9 @@ public class Posture2 {
     /**
      * Used by SGAnimator
      */
-    public void setAnimation(ComplexShape2 shape, int idx, Animation2 anim) {
-        PostureTree pt = postureTree.findByShape(shape);
-        assert (pt != null) : String.format("Shape %s not found in PostureTree", shape);
+    public void setAnimation(String partId, int idx, Animation2 anim) {
+        PostureTree pt = postureTree.findById(partId);
+        assert (pt != null) : String.format("Part \"%s\" not found in PostureTree", partId);
         pt.getAnimations().set(idx, anim);
         timeFunctions = postureTree.getUniqueTimeFunctions();
     }
@@ -73,9 +73,9 @@ public class Posture2 {
     /**
      * Used by SGAnimator
      */
-    public void addAnimation(ComplexShape2 shape, Animation2 anim) {
-        PostureTree pt = postureTree.findByShape(shape);
-        assert (pt != null) : String.format("Shape %s not found in PostureTree", shape);
+    public void addAnimation(String partId, Animation2 anim) {
+        PostureTree pt = postureTree.findById(partId);
+        assert (pt != null) : String.format("Part \"%s\" not found in PostureTree", partId);
         pt.getAnimations().add(anim);
         timeFunctions = postureTree.getUniqueTimeFunctions();
     }

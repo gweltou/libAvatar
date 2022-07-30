@@ -180,7 +180,7 @@ public class Avatar2 {
 
 
     public void update(float dtime) {
-        if (!paused)
+        if (!paused && currentPosture != null)
             currentPosture.update(timeFactor * dtime);
     }
 
@@ -288,15 +288,27 @@ public class Avatar2 {
             return null;
         }
 
-        /*
         if (loadAnim && json.has("animation")) {
-            JsonValue jsonAnimation = json.get("animation");
-            PostureCollection postureCollection = PostureCollection.fromJson(jsonAnimation, avatar.getPartsName());
-            avatar.postures = postureCollection;
-            if (postureCollection.size() > 0) {
-                avatar.loadPosture(0);
+            for (JsonValue jsonPosture : json.get("animation")) {
+                Posture2 posture = new Posture2();
+                posture.setName(jsonPosture.getString("name"));
+                posture.setDuration(jsonPosture.getFloat("duration", 0f));
+                posture.setPostureTree(PostureTree.buildTree(avatar.getShape(), null));
+                for (JsonValue jsonGroup : jsonPosture.get("groups")) {
+                    String partId = jsonGroup.getString("id");
+                    for (JsonValue jsonAnimFunc : jsonGroup.get("functions")) {
+                        Animation2 anim = new Animation2(TimeFunction.fromJson(jsonAnimFunc));
+                        int axe = Arrays.asList(Animation2.axeNames).indexOf(jsonAnimFunc.getString("axe"));
+                        anim.setAxe(axe);
+                        anim.setAmp(jsonAnimFunc.getFloat("amp"));
+                        anim.setInv(jsonAnimFunc.getBoolean("inv"));
+                        posture.addAnimation(partId, anim);
+                    }
+                }
+                avatar.postures.add(posture);
             }
-        }*/
+            avatar.currentPosture = avatar.postures.get(0);
+        }
 
         if (json.has("box2d")) {
             for (JsonValue jsonShape : json.get("box2d")) {
@@ -341,11 +353,9 @@ public class Avatar2 {
                     Posture2 posture = new Posture2();
                     posture.setName(jsonPosture.getString("name"));
                     posture.setDuration(jsonPosture.getFloat("duration"));
-                    posture.setPostureTree(PostureTree.buildTree(avatar.getShape()));
+                    posture.setPostureTree(PostureTree.buildTree(avatar.getShape(), null));
                     for (JsonValue jsonPart : jsonPosture.get("parts")) {
                         String partId = jsonPart.getString("part_id");
-                        ComplexShape2 cs = avatar.getShape().getById(partId);
-                        //PostureTree pt = postureTree.findById(partId);
                         for (JsonValue jsonAnim : jsonPart.get("animations")) {
                             int fnIdx = jsonAnim.getInt("function_id");
                             Animation2 anim = new Animation2(avatar.timeFunctions.get(fnIdx));
@@ -353,7 +363,7 @@ public class Avatar2 {
                             anim.setAxe(axe);
                             anim.setAmp(jsonAnim.getFloat("amp"));
                             anim.setInv(jsonAnim.getBoolean("inv"));
-                            posture.addAnimation(cs, anim);
+                            posture.addAnimation(partId, anim);
                         }
                     }
                     avatar.postures.add(posture);
