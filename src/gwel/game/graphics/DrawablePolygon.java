@@ -13,6 +13,7 @@ public class DrawablePolygon implements Shape {
     protected short[] indices;
     protected final Color color;
 
+
     public DrawablePolygon() {
         color = new Color(1, 1, 1, 1);
         vertices = new float[0];
@@ -31,6 +32,7 @@ public class DrawablePolygon implements Shape {
         this.vertices = vertices;
         indices = triangulator.computeTriangles(vertices).toArray();
     }
+
 
     public BoundingBox getBoundingBox() {
         BoundingBox bb = new BoundingBox();
@@ -51,6 +53,7 @@ public class DrawablePolygon implements Shape {
         }
         return bb;
     }
+
 
     @Override
     public boolean contains(Vector2 point) {
@@ -124,9 +127,9 @@ public class DrawablePolygon implements Shape {
     }
 
 
-    public short getNumTris() {
-        return (short) (indices.length / 3);
-    }
+    public short getNumIndices() { return (short) indices.length; }
+
+    public int getNumVerts() { return vertices.length / 2; }
 
 
     public DrawablePolygon copy() {

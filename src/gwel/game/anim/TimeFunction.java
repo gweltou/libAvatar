@@ -116,4 +116,10 @@ public abstract class TimeFunction {
             return null;
         }
     }
+
+
+    public String toString() {
+        String s = String.format(" [value: %.1f]", value);
+        return super.toString() + s;
+    }
 }

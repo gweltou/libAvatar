@@ -1,10 +1,10 @@
 package gwel.game.anim;
 
 import com.badlogic.gdx.math.Affine2;
+import com.badlogic.gdx.math.Vector2;
 import gwel.game.graphics.ComplexShape2;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 
 
 public class PostureTree {
@@ -13,13 +13,24 @@ public class PostureTree {
     private final ArrayList<PostureTree> children = new ArrayList<>();
     private final ArrayList<Animation2> animations = new ArrayList<>();
     private final Affine2 transform = new Affine2();
-    private final float[] colorMod = new float[4];;
+    private final float[] colorMod = new float[] {0f, 0f, 0f, 1f};
 
 
     public PostureTree(PostureTree parent, ComplexShape2 shape) {
         this.parent = parent;
         this.shape = shape;
     }
+
+
+    public PostureTree getParent() { return parent; }
+
+    public ArrayList<PostureTree> getChildren() { return children; }
+
+    public ArrayList<Animation2> getAnimations() { return animations; }
+
+    public Affine2 getTransform() { return transform; }
+
+    public float[] getColorMod() { return colorMod; }
 
 
     public static PostureTree buildTree(ComplexShape2 shape) {
@@ -31,30 +42,31 @@ public class PostureTree {
     }
 
 
-    public PostureTree getParent() { return parent; }
-
-
-    public ArrayList<Animation2> getAnimations() { return animations; }
-
-
-    public Affine2 getTransform() { return transform; }
-
     /**
      * Updates each transform matrix in the tree to their corresponding local transform matrices
      */
     public void updateTransform() {
-        transform.idt();
-        Arrays.fill(colorMod, 0f);
-        for (Animation2 anim : animations) {
-            if (anim.getAxe() < 6) {
-                transform.preMul(anim.getTransform());
-            } else {
-                float[] animColorMod = anim.getColorMod();
-                colorMod[0] += animColorMod[0];
-                colorMod[1] += animColorMod[1];
-                colorMod[2] += animColorMod[2];
-                colorMod[3] *= animColorMod[3];
+        if (!animations.isEmpty()) {
+            System.arraycopy(shape.getTint(), 0, colorMod, 0, 4);
+
+            Vector2 pivotPoint = shape.getLocalOrigin();
+            if (!shape.getTransform().isIdt()) {
+                shape.getTransform().applyTo(pivotPoint);
             }
+            transform.setToTranslation(-pivotPoint.x, -pivotPoint.y);
+            for (Animation2 anim : animations) {
+                anim.update();
+                if (anim.getAxe() < 6) {
+                    transform.preMul(anim.getTransform());
+                } else {
+                    float[] animColorMod = anim.getColorMod();
+                    colorMod[0] += animColorMod[0];
+                    colorMod[1] += animColorMod[1];
+                    colorMod[2] += animColorMod[2];
+                    colorMod[3] *= animColorMod[3];
+                }
+            }
+            transform.preTranslate(pivotPoint);
         }
 
         for (PostureTree child : children)

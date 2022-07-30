@@ -5,18 +5,28 @@ import com.badlogic.gdx.math.Vector2;
 public class BufferedRenderer extends Renderer {
     private float[] coloredVertices;
     private short[] indices;
-    private short numTris;
+    private short numVerts;
     private short vSize, iSize;
 
     public BufferedRenderer() {
+        super();
     }
 
-    public void setBufferSize(short numTris) {
-        coloredVertices = new float[numTris * (2+4)];
+    public void setBufferSize(int numVerts, short numIndices) {
+        coloredVertices = new float[numVerts * (2+4)];
+        indices = new short[numIndices];
+        //coloredVertices = new float[20000];
+        //indices = new short[10000];
+
+        System.out.println("vertices: " + coloredVertices.length);
+        System.out.println("indices: " + indices.length);
+        reset();
+    }
+
+    public void reset() {
         vSize = 0;
-        indices = new short[numTris * 3];
         iSize = 0;
-        this.numTris = 0;
+        numVerts = 0;
     }
 
     public float[] getVertices() { return coloredVertices; }
@@ -26,45 +36,21 @@ public class BufferedRenderer extends Renderer {
 
     @Override
     public void triangles(float[] vertices, short[] indices) {
-        int idx;
-        short nt = 0;
-        Vector2 point = new Vector2();
-		for (int i = 0; i < indices.length; ) {
-            idx = indices[i]<<1;
-            point.set(vertices[idx], vertices[idx+1]);
-            getTransform().applyTo(point);
-            vertices[vSize++] = point.x;
-            vertices[vSize++] = point.y;
-            vertices[vSize++] = color.r;
-            vertices[vSize++] = color.g;
-            vertices[vSize++] = color.b;
-            vertices[vSize++] = color.a;
-            this.indices[iSize++] = (short) (numTris + indices[i++]);
-
-            idx = indices[i]<<1;
-            point.set(vertices[idx], vertices[idx+1]);
-            getTransform().applyTo(point);
-            vertices[vSize++] = point.x;
-            vertices[vSize++] = point.y;
-            vertices[vSize++] = color.r;
-            vertices[vSize++] = color.g;
-            vertices[vSize++] = color.b;
-            vertices[vSize++] = color.a;
-            this.indices[iSize++] = (short) (numTris + indices[i++]);
-
-            idx = indices[i]<<1;
-            point.set(vertices[idx], vertices[idx+1]);
-            getTransform().applyTo(point);
-            vertices[vSize++] = point.x;
-            vertices[vSize++] = point.y;
-            vertices[vSize++] = color.r;
-            vertices[vSize++] = color.g;
-            vertices[vSize++] = color.b;
-            vertices[vSize++] = color.a;
-            this.indices[iSize++] = (short) (numTris + indices[i++]);
-            nt++;
+        for (short idx : indices) {
+            this.indices[iSize++] = (short) (idx + numVerts);
         }
-        numTris += nt;
+        Vector2 vertex = new Vector2();
+        for (int i = 0; i < vertices.length; i += 2) {
+            vertex.set(vertices[i], vertices[i+1]);
+            getTransform().applyTo(vertex);
+            coloredVertices[vSize++] = vertex.x;
+            coloredVertices[vSize++] = vertex.y;
+            coloredVertices[vSize++] = color.r;
+            coloredVertices[vSize++] = color.g;
+            coloredVertices[vSize++] = color.b;
+            coloredVertices[vSize++] = color.a;
+            numVerts++;
+        }
     }
 
     @Override

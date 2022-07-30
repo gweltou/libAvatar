@@ -101,6 +101,35 @@ public class PRenderer extends Renderer {
 	}
 
 
+	public void coloredTriangles(float[] vertices, short[] indices) {
+		parent.noStroke();
+		//parent.fill(Color.argb8888(color));
+
+		parent.beginShape(PConstants.TRIANGLES);
+		int idx;
+		Vector2 point = new Vector2();
+		for (int i = 0; i < indices.length; ) {
+			idx = indices[i++] * 6;
+			parent.fill(vertices[idx+2]*255, vertices[idx+3]*255, vertices[idx+4]*255, vertices[idx+5]*255);
+
+			point.set(vertices[idx], vertices[idx+1]);
+			getTransform().applyTo(point);
+			parent.vertex(point.x, point.y);
+
+			idx = indices[i++] * 6;
+			point.set(vertices[idx], vertices[idx+1]);
+			getTransform().applyTo(point);
+			parent.vertex(point.x, point.y);
+
+			idx = indices[i++] * 6;
+			point.set(vertices[idx], vertices[idx+1]);
+			getTransform().applyTo(point);
+			parent.vertex(point.x, point.y);
+		}
+		parent.endShape();
+	}
+
+
 	public void circle(float x, float y, float r) {
 		Vector2 point = new Vector2(x, y);
 		Vector2 radiusPoint = new Vector2(x+r, y);

@@ -7,7 +7,6 @@ import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.JsonWriter;
 import gwel.game.anim.*;
 import gwel.game.graphics.*;
-import gwel.game.utils.BoundingBox;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -21,7 +20,6 @@ public class Avatar2 {
     public boolean paused = false;
     private final Vector2 position = new Vector2();
     private final Affine2 transform = new Affine2();
-    public PostureCollection postures;
     private ComplexShape2[] partsList;
     public ArrayList<Shape> physicsShapes = new ArrayList<>();
 
@@ -33,9 +31,11 @@ public class Avatar2 {
     private float timeFactor = 1f;
 
     // V 2.0
-    private BufferedRenderer bufferedRenderer;
-    private ArrayList<TimeFunction> timeFunctions = new ArrayList<>();
-    private Posture2 currentPosture;
+    public BufferedRenderer bufferedRenderer;
+    public final ArrayList<TimeFunction> timeFunctions = new ArrayList<>();
+    private final ArrayList<Posture2> postures = new ArrayList<>();
+    public Posture2 currentPosture;
+    public boolean clonable = false;
 
 
 
@@ -109,13 +109,13 @@ public class Avatar2 {
         shape = root;
         partsList = root.getPartsList().toArray(new ComplexShape2[0]);
         bufferedRenderer = new BufferedRenderer();
-        bufferedRenderer.setBufferSize(shape.getNumTris());
+        bufferedRenderer.setBufferSize(shape.getNumVerts(), shape.getNumIndices());
     }
 
     public ComplexShape2 getShape() { return shape; }
 
 
-    public ComplexShape2[] getPartsList() { return partsList; }
+    public ComplexShape2[] getShapesList() { return partsList; }
 
 
     public String[] getPartsName() {
@@ -123,7 +123,7 @@ public class Avatar2 {
     }
 
     /**
-     * Delete if outside Processing editor
+     * Used by SGAnimator
      */
     public String[] getPartsNamePre() {
         return shape.getIdListPre("").toArray(new String[0]);
@@ -144,6 +144,7 @@ public class Avatar2 {
         }
     }
 
+    /*
     // Should be used by animation editor only (slow)
     public void setPosture(HashMap<String, Animation[]> posture) {
         setPosture(posture, 0.2f);
@@ -172,11 +173,10 @@ public class Avatar2 {
     }
 
 
-
     // Play every animation from the animationCollection sequentially
     public void playSequentially() {
 
-    }
+    }*/
 
 
     public void update(float dtime) {
@@ -199,7 +199,13 @@ public class Avatar2 {
         transform.scale(flipX ? -scaleX : scaleX, flipY ? -scaleY : scaleY);
         transform.rotateRad(angle);
         renderer.pushMatrix(transform);
-        shape.draw(renderer);
+        if (clonable) {
+            bufferedRenderer.reset();
+            shape.draw(bufferedRenderer, currentPosture.getPostureTree());
+            ((PRenderer) renderer).coloredTriangles(bufferedRenderer.getVertices(), bufferedRenderer.getIndices());
+        } else {
+            shape.draw(renderer, currentPosture.getPostureTree());
+        }
         renderer.popMatrix();
     }
 
@@ -213,7 +219,7 @@ public class Avatar2 {
 
 
     /**
-     * Make a copy of this Avatar, with no strings attached
+     * Make a copy of this Avatar, with same geometry but no strings attached
      *
      * @return a new Avatar
      */
@@ -282,6 +288,7 @@ public class Avatar2 {
             return null;
         }
 
+        /*
         if (loadAnim && json.has("animation")) {
             JsonValue jsonAnimation = json.get("animation");
             PostureCollection postureCollection = PostureCollection.fromJson(jsonAnimation, avatar.getPartsName());
@@ -289,7 +296,7 @@ public class Avatar2 {
             if (postureCollection.size() > 0) {
                 avatar.loadPosture(0);
             }
-        }
+        }*/
 
         if (json.has("box2d")) {
             for (JsonValue jsonShape : json.get("box2d")) {
@@ -349,7 +356,9 @@ public class Avatar2 {
                             posture.addAnimation(cs, anim);
                         }
                     }
+                    avatar.postures.add(posture);
                 }
+                avatar.currentPosture = avatar.postures.get(0);
             }
         }
 
@@ -378,8 +387,11 @@ public class Avatar2 {
         json.addChild("library version", new JsonValue(PRenderer.version()));
         json.addChild("format version", new JsonValue("1.0"));
 
+        /*
         if (postures != null)
             json.addChild("animation", postures.toJson(getPartsName()));
+
+         */
 
         // Box2D shapes
         JsonValue jsonPhysicsShapes = new JsonValue(JsonValue.ValueType.array);
@@ -420,9 +432,10 @@ public class Avatar2 {
         json.addChild("lib_ver", new JsonValue(PRenderer.version()));
         json.addChild("fmt_ver", new JsonValue("2.0"));
 
+        /*
         if (postures != null) {
             json.addChild("animation", postures.toJson(getPartsName()));
-        }
+        }*/
 
         // Box2D shapes
         JsonValue jsonPhysicsShapes = new JsonValue(JsonValue.ValueType.array);

@@ -5,7 +5,6 @@ import com.badlogic.gdx.math.Affine2;
 import com.badlogic.gdx.math.Bezier;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.JsonValue;
-import gwel.game.anim.Animation;
 import gwel.game.anim.PostureTree;
 import gwel.game.utils.BoundingBox;
 import gwel.game.utils.DummyPShape;
@@ -21,25 +20,18 @@ import static processing.core.PConstants.*;
 
 public class ComplexShape2 implements Shape {
     private final String id;
-    protected ComplexShape2 parent;
-    private final ArrayList<ComplexShape2> children;
-    private final ArrayList<Shape> shapes; // ComplexShapes and simple shapes
-    private final Vector2 localOrigin;  // Pivot point
-    protected final Affine2 preTransform; // To store manual static transform
-    private final float[] tint, colorMod;
-    private final BoundingBox boundingBox;
+    protected ComplexShape2 parent = null;
+    private final ArrayList<ComplexShape2> children = new ArrayList<>();
+    private final ArrayList<Shape> shapes = new ArrayList<>(); // ComplexShapes and simple shapes
+    private final Vector2 localOrigin = new Vector2();  // Pivot point
+    protected final Affine2 preTransform = new Affine2();
+    private final float[] tint = new float[] {0f, 0f, 0f, 1f};
+    private final BoundingBox boundingBox = new BoundingBox();
     private boolean boundingBox_dirty;
+
 
     public ComplexShape2(String id) {
         this.id = id;
-        parent = null;
-        children = new ArrayList<>();
-        shapes = new ArrayList<>();
-        localOrigin = new Vector2();
-        preTransform = new Affine2();
-        tint = new float[] {0f, 0f, 0f, 1f};
-        colorMod = new float[] {0f, 0f, 0f, 1f};
-        boundingBox = new BoundingBox();
     }
 
     private ComplexShape2 getRootShape() {
@@ -75,22 +67,10 @@ public class ComplexShape2 implements Shape {
         return children;
     }
 
-    /**
-     * Remove all children
-     */
-    public void clear() {
-        children.clear();
-        shapes.clear();
-    }
 
+    public Vector2 getLocalOrigin() { return localOrigin.cpy(); }
 
-    public Vector2 getLocalOrigin() {
-        return localOrigin.cpy();
-    }
-
-    public void setLocalOrigin(Vector2 pos) {
-        localOrigin.set(pos);
-    }
+    public void setLocalOrigin(Vector2 pos) { localOrigin.set(pos); }
 
 
     public BoundingBox getBoundingBox() {
@@ -187,7 +167,6 @@ public class ComplexShape2 implements Shape {
 
     /**
      * V 2.0
-     *
      * Get the transform state of this shape at this particular animated moment
      * That includes parents transform and soft transform and animations transform
      *
@@ -195,8 +174,9 @@ public class ComplexShape2 implements Shape {
      */
     public Affine2 getAbsoluteTransform(PostureTree pt) {
         Affine2 combined = new Affine2();
-        if (pt != null)
+        if (pt != null) {
             combined.mul(pt.getTransform());
+        }
         combined.mul(preTransform);
         if (parent == null) {
             return combined;
@@ -216,7 +196,6 @@ public class ComplexShape2 implements Shape {
         preTransform.mul(invTransform);
         preTransform.mul(transform);
         preTransform.mul(currentTransform);
-        //transform.applyTo(localOrigin);
         getRootShape().invalidateBoundingBox();
     }
 
@@ -229,10 +208,11 @@ public class ComplexShape2 implements Shape {
         preTransform.set(transform);
     }
 
-    public Affine2 getTransform() {
-        return new Affine2(preTransform);
-    }
+    public Affine2 getTransform() { return new Affine2(preTransform); }
 
+    /**
+     * Used by SGAnimator
+     */
     public void resetTransform() {
         preTransform.idt();
         getRootShape().invalidateBoundingBox();
@@ -280,7 +260,12 @@ public class ComplexShape2 implements Shape {
     }
 
 
-    // Used for SgAnimator
+    /**
+     * Used by SGAnimator
+     *
+     * @param pre prefix to add to the names of parts
+     * @return a list of part names prefixed with the given string, according to their hierarchy
+     */
     public ArrayList<String> getIdListPre(String pre) {
         ArrayList<String> list = new ArrayList<>();
         list.add(pre + id);
@@ -382,34 +367,50 @@ public class ComplexShape2 implements Shape {
     /**
      *  Apply a constant tint to the shape
      */
-    public void setColorMod(float mr, float mg, float mb, float ma) {
-        tint[0] = mr;
-        tint[1] = mg;
-        tint[2] = mb;
-        tint[3] = ma;
+    public void setTint(Color color) {
+        setTint(color.r, color.g, color.b, color.a);
     }
 
     /**
      *  Apply a constant tint to the shape
      */
-    public void setColorMod(Color colorMod) {
-        tint[0] = colorMod.r;
-        tint[1] = colorMod.g;
-        tint[2] = colorMod.b;
-        tint[3] = colorMod.a;
+    public void setTint(float r, float g, float b, float a) {
+        tint[0] = r;
+        tint[1] = g;
+        tint[2] = b;
+        tint[3] = a;
     }
+
+    public float[] getTint() { return tint; }
 
 
     public void draw(Renderer renderer) {
         // preTransform is applied BEFORE animTransform
         //renderer.pushMatrix(animTransform);
         renderer.pushMatrix(preTransform);
-        renderer.pushColorMod(colorMod);
-        for (Drawable shape : shapes)
+        //renderer.pushColorMod(colorMod);
+        for (Shape shape : shapes)
             shape.draw(renderer);
+        //renderer.popColorMod();
+        renderer.popMatrix();
+        //renderer.popMatrix();
+    }
+
+
+    public void draw(Renderer renderer, PostureTree pt) {
+        renderer.pushColorMod(pt.getColorMod());
+        renderer.pushMatrix(pt.getTransform());
+        renderer.pushMatrix(preTransform);
+        int i = 0;
+        for (Shape shape : shapes) {
+            if (shape instanceof ComplexShape2)
+                ((ComplexShape2) shape).draw(renderer, pt.getChildren().get(i++));
+            else
+                shape.draw(renderer);
+        }
+        renderer.popMatrix();
+        renderer.popMatrix();
         renderer.popColorMod();
-        renderer.popMatrix();
-        renderer.popMatrix();
     }
 
 
@@ -417,10 +418,10 @@ public class ComplexShape2 implements Shape {
     public void drawSelected(PRenderer renderer) {
         //renderer.pushMatrix(pt.getTransform());
         renderer.pushMatrix(preTransform);
-        for (Drawable shape : shapes)
+        for (Shape shape : shapes)
             shape.drawSelected(renderer);
         renderer.popMatrix();
-        renderer.popMatrix();
+        //renderer.popMatrix();
     }
 
     // Used for processing animation editor
@@ -441,24 +442,31 @@ public class ComplexShape2 implements Shape {
 
     /**
      * V 2.0
-     * Draw the local origin of this shape while animated
-     *
-     * @return
+     * Used by SGAnimator
+     * Draw the pivot point of this shape while animated
      */
     public void drawPivot(Renderer renderer, PostureTree pt) {
         Vector2 point = getLocalOrigin();
         getAbsoluteTransform(pt).applyTo(point);
         //renderer.getTransform().applyTo(point);
-
         renderer.color.set(0f, 0f, 1f, 1f);
         renderer.circle(point.x, point.y, 4/renderer.getTransform().m00);
+
     }
 
 
-    public short getNumTris() {
+    public short getNumIndices() {
         short n = 0;
         for (Shape shape : shapes) {
-            n += shape.getNumTris();
+            n += shape.getNumIndices();
+        }
+        return n;
+    }
+
+    public int getNumVerts() {
+        int n = 0;
+        for (Shape shape : shapes) {
+            n += shape.getNumVerts();
         }
         return n;
     }
@@ -698,9 +706,29 @@ public class ComplexShape2 implements Shape {
         }
 
         JsonValue shapes = new JsonValue(JsonValue.ValueType.array);
-        for (Drawable shape : getShapes()) {
+        for (Shape shape : getShapes()) {
             if (shape instanceof ComplexShape2) {
                 shapes.addChild(((ComplexShape2) shape).toJson());
+            } else if (shape instanceof DrawableCircle) {
+                DrawableCircle c = (DrawableCircle) shape;
+                JsonValue s = new JsonValue(JsonValue.ValueType.object);
+                s.addChild("type", new JsonValue("circle"));
+
+                JsonValue colorArray = new JsonValue(JsonValue.ValueType.array);
+                colorArray.addChild(new JsonValue(c.getColor().r));
+                colorArray.addChild(new JsonValue(c.getColor().g));
+                colorArray.addChild(new JsonValue(c.getColor().b));
+                colorArray.addChild(new JsonValue(c.getColor().a));
+                s.addChild("color", colorArray);
+
+                JsonValue paramsArray = new JsonValue(JsonValue.ValueType.array);
+                paramsArray.addChild(new JsonValue(c.getCenter().x));
+                paramsArray.addChild(new JsonValue(c.getCenter().y));
+                paramsArray.addChild(new JsonValue(c.getRadius()));
+                paramsArray.addChild(new JsonValue(c.getSegments()));
+                s.addChild("params", paramsArray);
+
+                shapes.addChild(s);
             } else if (shape instanceof DrawablePolygon) {
                 DrawablePolygon p = (DrawablePolygon) shape;
                 JsonValue s = new JsonValue(JsonValue.ValueType.object);
@@ -725,26 +753,6 @@ public class ComplexShape2 implements Shape {
                     trianglesArray.addChild(new JsonValue(triangle));
                 }
                 s.addChild("triangles", trianglesArray);
-
-                shapes.addChild(s);
-            } else if (shape instanceof DrawableCircle) {
-                DrawableCircle c = (DrawableCircle) shape;
-                JsonValue s = new JsonValue(JsonValue.ValueType.object);
-                s.addChild("type", new JsonValue("circle"));
-
-                JsonValue colorArray = new JsonValue(JsonValue.ValueType.array);
-                colorArray.addChild(new JsonValue(c.getColor().r));
-                colorArray.addChild(new JsonValue(c.getColor().g));
-                colorArray.addChild(new JsonValue(c.getColor().b));
-                colorArray.addChild(new JsonValue(c.getColor().a));
-                s.addChild("color", colorArray);
-
-                JsonValue paramsArray = new JsonValue(JsonValue.ValueType.array);
-                paramsArray.addChild(new JsonValue(c.getCenter().x));
-                paramsArray.addChild(new JsonValue(c.getCenter().y));
-                paramsArray.addChild(new JsonValue(c.getRadius()));
-                paramsArray.addChild(new JsonValue(c.getSegments()));
-                s.addChild("params", paramsArray);
 
                 shapes.addChild(s);
             }

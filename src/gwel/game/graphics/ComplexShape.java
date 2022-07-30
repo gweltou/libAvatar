@@ -472,7 +472,7 @@ public class ComplexShape implements Shape {
         renderer.pushMatrix(animTransform);
         renderer.pushMatrix(preTransform);
         renderer.pushColorMod(colorMod);
-        for (Drawable shape : shapes)
+        for (Shape shape : shapes)
             shape.draw(renderer);
         renderer.popColorMod();
         renderer.popMatrix();
@@ -484,7 +484,7 @@ public class ComplexShape implements Shape {
     public void drawSelected(PRenderer renderer) {
         renderer.pushMatrix(animTransform);
         renderer.pushMatrix(preTransform);
-        for (Drawable shape : shapes)
+        for (Shape shape : shapes)
             shape.drawSelected(renderer);
         renderer.popMatrix();
         renderer.popMatrix();
@@ -523,10 +523,18 @@ public class ComplexShape implements Shape {
     }
 
 
-    public short getNumTris() {
+    public short getNumIndices() {
         short n = 0;
         for (Shape shape : shapes) {
-            n += shape.getNumTris();
+            n += shape.getNumIndices();
+        }
+        return n;
+    }
+
+    public int getNumVerts() {
+        int n = 0;
+        for (Shape shape : shapes) {
+            n += shape.getNumVerts();
         }
         return n;
     }
@@ -547,7 +555,9 @@ public class ComplexShape implements Shape {
     }
 
 
-    // Used by processing animation editor
+    /**
+     * Used by SGAnimator
+     */
     public static ComplexShape fromPShape(PShape svgShape) {
         Shape shape = fromPShape(svgShape, new PMatrix3D(), 0);
         if (!(shape instanceof ComplexShape)) {
@@ -559,7 +569,9 @@ public class ComplexShape implements Shape {
         return (ComplexShape) shape;
     }
 
-    // Used by processing animation editor
+    /**
+     * Used by SGAnimator
+     */
     public static Shape fromPShape(PShape svgShape, PMatrix3D matrix, int depth) {
         //StringBuilder prefix = new StringBuilder();
 
@@ -776,7 +788,7 @@ public class ComplexShape implements Shape {
         }
 
         JsonValue shapes = new JsonValue(JsonValue.ValueType.array);
-        for (Drawable shape : getShapes()) {
+        for (Shape shape : getShapes()) {
             if (shape instanceof ComplexShape) {
                 shapes.addChild(((ComplexShape) shape).toJson(saveAnim));
             } else if (shape instanceof DrawablePolygon) {

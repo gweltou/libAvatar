@@ -23,7 +23,10 @@ public class Posture2 {
 
     public void setDuration(float duration) { this.duration = duration; }
 
-    public void setPostureTree(PostureTree tree) { this.postureTree = tree; }
+    public void setPostureTree(PostureTree tree) { postureTree = tree; }
+
+    public PostureTree getPostureTree() { return postureTree; }
+
 
     /**
      * Updates the TimeFunctions used by this posture and
@@ -44,12 +47,9 @@ public class Posture2 {
          postureTree.updateTransform();
      }
 
+
     /**
-     * Used by SGAnimator editor only
-     *
-     * @param shape
-     * @param idx
-     * @return
+     * Used by SGAnimator
      */
     public Animation2 getAnimation(ComplexShape2 shape, int idx) {
         PostureTree pt = postureTree.findByShape(shape);
@@ -60,34 +60,29 @@ public class Posture2 {
 
 
     /**
-     * Used by SGAnimator editor only
-     *
-     * @param shape
-     * @param idx
-     * @param anim
+     * Used by SGAnimator
      */
     public void setAnimation(ComplexShape2 shape, int idx, Animation2 anim) {
         PostureTree pt = postureTree.findByShape(shape);
         assert (pt != null) : String.format("Shape %s not found in PostureTree", shape);
         pt.getAnimations().set(idx, anim);
+        timeFunctions = postureTree.getUniqueTimeFunctions();
     }
 
 
     /**
-     * Used by SGAnimator editor only
-     *
-     * @param shape
-     * @param anim New animation to add to the shape
+     * Used by SGAnimator
      */
     public void addAnimation(ComplexShape2 shape, Animation2 anim) {
         PostureTree pt = postureTree.findByShape(shape);
         assert (pt != null) : String.format("Shape %s not found in PostureTree", shape);
         pt.getAnimations().add(anim);
+        timeFunctions = postureTree.getUniqueTimeFunctions();
     }
 
 
     /**
-     * Used by SGAnimator editor only
+     * Used by SGAnimator
      *
      * @param shape
      * @param idx
@@ -96,7 +91,9 @@ public class Posture2 {
         PostureTree pt = postureTree.findByShape(shape);
         assert (pt != null) : String.format("Shape %s not found in PostureTree", shape);
         pt.getAnimations().remove(idx);
+        timeFunctions = postureTree.getUniqueTimeFunctions();
     }
+
 
     public String toString() {
         String s = String.format(" [name: %s duration: %.1f]", name, duration);

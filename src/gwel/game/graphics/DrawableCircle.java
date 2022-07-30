@@ -111,11 +111,19 @@ public class DrawableCircle extends DrawablePolygon {
     }
 
     @Override
-    public short getNumTris() {
+    public short getNumIndices() {
         if (dirty)
             computeVertices();
-        return (short) (indices.length / 3);
+        return super.getNumIndices();
     }
+
+    @Override
+    public int getNumVerts() {
+        if (dirty)
+            computeVertices();
+        return super.getNumVerts();
+    }
+
 
     @Override
     public void hardTransform(Affine2 transform) {

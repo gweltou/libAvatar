@@ -1,7 +1,6 @@
 package gwel.game.anim;
 
 
-import com.badlogic.gdx.graphics.g3d.utils.BaseAnimationController;
 import com.badlogic.gdx.math.Affine2;
 import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.math.MathUtils;
@@ -66,22 +65,19 @@ public class Animation2 {
             "bounce", "bounceIn", "bounceOut"
     };
     private TimeFunction fn;
-    private int axe;
-    private final Affine2 transform;
-    private final float[] colorMod;
-    private static final float[] noColor = new float[] {0f, 0f, 0f, 0f};
+    private int axe = AXE_X;
+    private final Affine2 transform = new Affine2();
+    private final float[] colorMod = new float[] {0f, 0f, 0f, 1f};
+    private static final float[] noColor = new float[] {0f, 0f, 0f, 1f};
     private float amp = 1.0f;
     private boolean inv = false;
     private float mult = 1.0f;
     private final boolean isActive = true;
+    private float value;
 
 
     public Animation2(TimeFunction fn) {
         this.fn = fn;
-        this.axe = AXE_X;
-        //value = 0.0f;
-        transform = new Affine2();
-        colorMod = new float[] {0f, 0f, 0f, 1f};
     }
 
     public Animation2(TimeFunction fn, int axe) {
@@ -89,10 +85,10 @@ public class Animation2 {
         setAxe(axe);
     }
 
-    public Animation2(TimeFunction fn, int axe, float amp) {
+    /*public Animation2(TimeFunction fn, int axe, float amp) {
         this(fn, axe);
         setAmp(amp);
-    }
+    }*/
 
 
     public static Interpolation getInterpolation(int n) {
@@ -167,35 +163,34 @@ public class Animation2 {
     }
 
     public Vector2 getScale() {
-        float value = fn.getValue();
-        float sx = axe==AXE_SX || axe==AXE_Z ? value : 1.0f;
-        float sy = axe==AXE_SY || axe==AXE_Z ? value : 1.0f;
+        float sx = axe == AXE_SX || axe == AXE_Z ? value : 1.0f;
+        float sy = axe == AXE_SY || axe == AXE_Z ? value : 1.0f;
         return new Vector2(sx, sy);
     }
 
 
     public Vector2 getTranslation() {
-        float value = fn.getValue();
-        float tx = axe==AXE_X ? value : 0.0f;
+        float tx = axe == AXE_X ? value : 0.0f;
         // Reverse y axis
-        float ty = axe==AXE_Y ? -value : 0.0f;
+        float ty = axe == AXE_Y ? -value : 0.0f;
         return new Vector2(tx, ty);
     }
 
 
     public float getRotation() {
-        return axe==AXE_ROT ? fn.getValue() : 0.0f;
+        return axe == AXE_ROT ? value : 0.0f;
     }
 
 
     //public float getValue() { return fn.getValue(); }
+
+    public void update() { value = mult * fn.getValue(); }
 
 
     public Affine2 getTransform() {
         if (!isActive)
             return transform.idt();
 
-        float value = mult * fn.getValue();
         if (axe < AXE_ALPHA) {
             transform.setToTranslation(getTranslation());
             transform.scale(getScale());
@@ -211,8 +206,13 @@ public class Animation2 {
 
 
     public float[] getColorMod() {
-        if (isActive)
+        if (isActive && axe >= AXE_ALPHA) {
+            colorMod[0] = axe == AXE_R || axe == AXE_RGB ? value : 0f;
+            colorMod[1] = axe == AXE_G || axe == AXE_RGB ? value : 0f;
+            colorMod[2] = axe == AXE_B || axe == AXE_RGB ? value : 0f;
+            colorMod[3] = axe == AXE_ALPHA ? value : 1f;
             return colorMod;
+        }
         return noColor;
     }
 
