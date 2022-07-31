@@ -1,6 +1,12 @@
 2.0
+  * Cloned Avatars can share the same animation state. Clonable Avatars render their geometry in an internal buffered renderer.
+  * TimeFunctions can be shared between many Animations (cloned animations)
+  * Json data file type version 2
+  * Vertices coordinates are rounded (to a precision of 1/255) by default when exporting to json
   * TimeFunction EaseFromTo start in DELAY state
   * Fixed ComplexShape.contains() bug when scaleX or scaleY is 0
+  * Lots of refactoring
+
 
 1.4
   * Renamed MyRenderer to PRenderer
@@ -8,6 +14,7 @@
   * New Renderer class for buffered rendering : PGraphicsRenderer
   * Drawing to file functions removed from library
   * New class : MatrixStack
+
 
 1.3
   * Prints library version when instantiating MyRenderer

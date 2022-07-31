@@ -257,7 +257,7 @@ public class Animation2 {
         return result;
     }
 
-
+    /*
     public static Animation2 fromJson(JsonValue json) {
         Animation2 anim = null;
         int axe = Arrays.asList(Animation2.axeNames).indexOf(json.getString("axe"));
@@ -296,10 +296,10 @@ public class Animation2 {
         anim.setAmp(amp);
         anim.setInv(inv);
         return anim;
-    }
+    }*/
 
 
-    public JsonValue toJson() {
+    /*public JsonValue toJson() {
         JsonValue json = new JsonValue(JsonValue.ValueType.object);
         String[] fullFunctionName = fn.getClass().getName().split("[.]");
         json.addChild("function", new JsonValue(fullFunctionName[fullFunctionName.length-1]));
@@ -326,7 +326,7 @@ public class Animation2 {
             }
         }
         return json;
-    }
+    }*/
 
     public String toString() {
         String s = String.format(" [fn: %s axe: %s amp: %.1f inv: %s]",

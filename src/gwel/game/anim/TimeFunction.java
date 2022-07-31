@@ -118,6 +118,33 @@ public abstract class TimeFunction {
     }
 
 
+    public JsonValue toJson() {
+        JsonValue json = new JsonValue(JsonValue.ValueType.object);
+        String[] fullFunctionName = getClass().getName().split("[.]");
+        json.addChild("function", new JsonValue(fullFunctionName[fullFunctionName.length-1]));
+        // TimeTable values
+        if (this instanceof TFTimetable) {
+            JsonValue table = new JsonValue(JsonValue.ValueType.array);
+            for (float value : ((TFTimetable) this).getTable())
+                table.addChild(new JsonValue(value));
+            json.addChild("table", table);
+        }
+        // Function parameters
+        for (TFParam param : getParams()) {
+            if (param.getValue() instanceof Float) {
+                json.addChild(param.name, new JsonValue((float) param.getValue()));
+            } else if (param.getValue() instanceof Boolean) {
+                json.addChild(param.name, new JsonValue((boolean) param.getValue()));
+            } else if (param.getValue() instanceof Integer) {
+                json.addChild(param.name, new JsonValue((int) param.getValue()));
+            } else if (param.getValue() instanceof String) {
+                json.addChild(param.name, new JsonValue((String) param.getValue()));
+            }
+        }
+        return json;
+    }
+
+
     public String toString() {
         String s = String.format(" [value: %.1f]", value);
         return super.toString() + s;

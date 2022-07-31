@@ -21,7 +21,11 @@ public class Posture2 {
 
     public void setName(String name) { this.name = name; }
 
+    public String getName() { return name; }
+
     public void setDuration(float duration) { this.duration = duration; }
+
+    public float getDuration() { return duration; }
 
     public void setPostureTree(PostureTree tree) { postureTree = tree; }
 

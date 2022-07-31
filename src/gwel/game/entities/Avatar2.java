@@ -7,6 +7,7 @@ import com.badlogic.gdx.utils.JsonValue;
 import com.badlogic.gdx.utils.JsonWriter;
 import gwel.game.anim.*;
 import gwel.game.graphics.*;
+import processing.data.JSONArray;
 
 import java.io.*;
 import java.util.ArrayList;
@@ -32,7 +33,7 @@ public class Avatar2 {
 
     // V 2.0
     public BufferedRenderer bufferedRenderer;
-    public final ArrayList<TimeFunction> timeFunctions = new ArrayList<>();
+    //public final ArrayList<TimeFunction> timeFunctions = new ArrayList<>();
     private final ArrayList<Posture2> postures = new ArrayList<>();
     public Posture2 currentPosture;
     public boolean clonable = false;
@@ -343,9 +344,10 @@ public class Avatar2 {
         if (loadAnim && json.has("animation")) {
             JsonValue jsonAnimation = json.get("animation");
 
+            ArrayList<TimeFunction> timeFunctions = new ArrayList<>();
             if (jsonAnimation.has("functions")) {
                 for (JsonValue fn : jsonAnimation.get("functions")) {
-                    avatar.timeFunctions.add(TimeFunction.fromJson(fn));
+                    timeFunctions.add(TimeFunction.fromJson(fn));
                 }
             }
             if (jsonAnimation.has("postures")) {
@@ -357,8 +359,8 @@ public class Avatar2 {
                     for (JsonValue jsonPart : jsonPosture.get("parts")) {
                         String partId = jsonPart.getString("part_id");
                         for (JsonValue jsonAnim : jsonPart.get("animations")) {
-                            int fnIdx = jsonAnim.getInt("function_id");
-                            Animation2 anim = new Animation2(avatar.timeFunctions.get(fnIdx));
+                            int fnIdx = jsonAnim.getInt("fn_id");
+                            Animation2 anim = new Animation2(timeFunctions.get(fnIdx));
                             int axe = Arrays.asList(Animation2.axeNames).indexOf(jsonAnim.getString("axe"));
                             anim.setAxe(axe);
                             anim.setAmp(jsonAnim.getFloat("amp"));
@@ -391,6 +393,7 @@ public class Avatar2 {
 
     public void saveFile(String filename) { saveFile_v2(filename); }
 
+    @Deprecated
     public void saveFile_v1(String filename) {
         JsonValue json = new JsonValue(JsonValue.ValueType.object);
 
@@ -440,12 +443,52 @@ public class Avatar2 {
     public void saveFile_v2(String filename) {
         JsonValue json = new JsonValue(JsonValue.ValueType.object);
         json.addChild("lib_ver", new JsonValue(PRenderer.version()));
-        json.addChild("fmt_ver", new JsonValue("2.0"));
+        json.addChild("fmt_ver", new JsonValue("2"));
 
-        /*
-        if (postures != null) {
-            json.addChild("animation", postures.toJson(getPartsName()));
-        }*/
+        if (!postures.isEmpty()) {
+            //json.addChild("animation", postures.toJson(getPartsName()));
+            JsonValue jsonAnimation = new JsonValue(JsonValue.ValueType.object);
+            JsonValue jsonPostures = new JsonValue(JsonValue.ValueType.array);
+            JsonValue jsonFunctions = new JsonValue(JsonValue.ValueType.array);
+            ArrayList<TimeFunction> timeFunctions = new ArrayList<>();
+            for (Posture2 posture : postures) {
+                for (TimeFunction fn : posture.getPostureTree().getUniqueTimeFunctions()) {
+                    if (!timeFunctions.contains(fn)) {
+                        timeFunctions.add(fn);
+                        jsonFunctions.addChild(fn.toJson());
+                    }
+                }
+                JsonValue jsonPosture = new JsonValue(JsonValue.ValueType.object);
+                jsonPosture.addChild("name", new JsonValue(posture.getName()));
+                jsonPosture.addChild("duration", new JsonValue(posture.getDuration()));
+
+                JsonValue jsonParts = new JsonValue(JsonValue.ValueType.array);
+                PostureTree ptree = posture.getPostureTree();
+                for (ComplexShape2 cs : getShapesList()) {
+                    ArrayList<Animation2> anims = ptree.findByShape(cs).getAnimations();
+                    if (!anims.isEmpty()) {
+                        JsonValue jsonPartAnim = new JsonValue(JsonValue.ValueType.object);
+                        jsonPartAnim.addChild("part_id", new JsonValue(cs.getId()));
+                        JsonValue jsonAnims = new JsonValue(JsonValue.ValueType.array);
+                        for (Animation2 anim : anims) {
+                            JsonValue jsonAnim = new JsonValue(JsonValue.ValueType.object);
+                            jsonAnim.addChild("fn_id", new JsonValue(timeFunctions.indexOf(anim.getFunction())));
+                            jsonAnim.addChild("axe", new JsonValue(Animation2.axeNames[anim.getAxe()]));
+                            jsonAnim.addChild("inv", new JsonValue(anim.getInv()));
+                            jsonAnim.addChild("amp", new JsonValue(anim.getAmp()));
+                            jsonAnims.addChild(jsonAnim);
+                        }
+                        jsonPartAnim.addChild("animations", jsonAnims);
+                        jsonParts.addChild(jsonPartAnim);
+                    }
+                }
+                jsonPosture.addChild("parts", jsonParts);
+                jsonPostures.addChild(jsonPosture);
+            }
+            jsonAnimation.addChild("functions", jsonFunctions);
+            jsonAnimation.addChild("postures", jsonPostures);
+            json.addChild("animation", jsonAnimation);
+        }
 
         // Box2D shapes
         JsonValue jsonPhysicsShapes = new JsonValue(JsonValue.ValueType.array);
@@ -468,14 +511,8 @@ public class Avatar2 {
             jsonPhysicsShapes.addChild(jsonShape);
         }
 
-        JsonValue jsonAvatar = new JsonValue(JsonValue.ValueType.object);
-        jsonAvatar.addChild("box2d", jsonPhysicsShapes);
-        jsonAvatar.addChild("geometry", shape.toJson());
-
-        JsonValue jsonAvatars = new JsonValue(JsonValue.ValueType.array);
-        jsonAvatars.addChild(jsonAvatar);
-
-        json.addChild("avatars", jsonAvatars);
+        json.addChild("box2d", jsonPhysicsShapes);
+        json.addChild("geometry", shape.toJson());
 
         try {
             FileWriter writer = new FileWriter(filename);

@@ -685,13 +685,23 @@ public class ComplexShape2 implements Shape {
     }
 
 
+    private float roundPrec(float val, float prec) {
+        return Math.round(val * prec) / prec;
+    }
+
     public JsonValue toJson() {
+        return toJson(8);
+    }
+
+    public JsonValue toJson(int precision) {
+        float prec = (float) Math.pow(2, precision);
+
         JsonValue json = new JsonValue(JsonValue.ValueType.object);
         json.addChild("id", new JsonValue(id));
 
         JsonValue origin = new JsonValue(JsonValue.ValueType.array);
-        origin.addChild(new JsonValue(localOrigin.x));
-        origin.addChild(new JsonValue(localOrigin.y));
+        origin.addChild(new JsonValue(roundPrec(localOrigin.x, prec)));
+        origin.addChild(new JsonValue(roundPrec(localOrigin.y, prec)));
         json.addChild("origin", origin);
 
         if (!preTransform.isIdt()) {
@@ -715,16 +725,16 @@ public class ComplexShape2 implements Shape {
                 s.addChild("type", new JsonValue("circle"));
 
                 JsonValue colorArray = new JsonValue(JsonValue.ValueType.array);
-                colorArray.addChild(new JsonValue(c.getColor().r));
-                colorArray.addChild(new JsonValue(c.getColor().g));
-                colorArray.addChild(new JsonValue(c.getColor().b));
-                colorArray.addChild(new JsonValue(c.getColor().a));
+                colorArray.addChild(new JsonValue(roundPrec(c.getColor().r, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(c.getColor().g, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(c.getColor().b, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(c.getColor().a, 256f)));
                 s.addChild("color", colorArray);
 
                 JsonValue paramsArray = new JsonValue(JsonValue.ValueType.array);
-                paramsArray.addChild(new JsonValue(c.getCenter().x));
-                paramsArray.addChild(new JsonValue(c.getCenter().y));
-                paramsArray.addChild(new JsonValue(c.getRadius()));
+                paramsArray.addChild(new JsonValue(roundPrec(c.getCenter().x, prec)));
+                paramsArray.addChild(new JsonValue(roundPrec(c.getCenter().y, prec)));
+                paramsArray.addChild(new JsonValue(roundPrec(c.getRadius(), prec)));
                 paramsArray.addChild(new JsonValue(c.getSegments()));
                 s.addChild("params", paramsArray);
 
@@ -735,16 +745,16 @@ public class ComplexShape2 implements Shape {
                 s.addChild("type", new JsonValue("polygon"));
 
                 JsonValue colorArray = new JsonValue(JsonValue.ValueType.array);
-                colorArray.addChild(new JsonValue(p.getColor().r));
-                colorArray.addChild(new JsonValue(p.getColor().g));
-                colorArray.addChild(new JsonValue(p.getColor().b));
-                colorArray.addChild(new JsonValue(p.getColor().a));
+                colorArray.addChild(new JsonValue(roundPrec(p.getColor().r, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(p.getColor().g, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(p.getColor().b, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(p.getColor().a, 256f)));
                 s.addChild("color", colorArray);
 
                 JsonValue verticesArray = new JsonValue(JsonValue.ValueType.array);
                 for (float vert : p.getVertices()) {
                     // No use trying to round values here...
-                    verticesArray.addChild(new JsonValue(vert));
+                    verticesArray.addChild(new JsonValue(roundPrec(vert, prec)));
                 }
                 s.addChild("vertices", verticesArray);
 
