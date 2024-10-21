@@ -21,9 +21,6 @@ public class PRenderer extends Renderer {
 	public final static String VERSION = "##library.prettyVersion##";
 	// parent is a reference to the parent sketch
 	private final PApplet parent;
-
-	private ComplexShape selected;
-	static public final Color selectedColor = new Color(0.0f, 1.0f, 0.0f, 0.6f);
 	private boolean wireframe = false;
 
 
@@ -31,21 +28,6 @@ public class PRenderer extends Renderer {
 		super();
 		this.parent = parent;
 		System.out.println("Game renderer initiated..." + " Version " + VERSION);
-	}
-
-
-	/**
-	 * Delete if outside SgAnimator
-	 */
-	public void setSelected(ComplexShape selected) {
-		this.selected = selected;
-	}
-
-	/**
-	 * Delete if outside SgAnimator
-	 */
-	public ComplexShape getSelected() {
-		return selected;
 	}
 
 
@@ -169,7 +151,7 @@ public class PRenderer extends Renderer {
 
 
 	/**
-	 * Delete if outside SgAnimator
+	 * Used by SGAnimator
 	 */
 	public void toggleWireframe() { wireframe = !wireframe; }
 

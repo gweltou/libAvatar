@@ -55,11 +55,6 @@ public class DrawablePolygon implements Shape {
     }
 
 
-    @Override
-    public boolean contains(Vector2 point) {
-        return contains(point.x, point.y);
-    }
-
     /**
      * From package com.badlogic.gdx.math.Polygon;
      */
@@ -145,8 +140,8 @@ public class DrawablePolygon implements Shape {
     }
 
     // Delete if outside SgAnimator
-    public void drawSelected(PRenderer renderer) {
+    /*public void drawSelected(PRenderer renderer) {
         renderer.setColor(PRenderer.selectedColor);
         renderer.triangles(vertices);
-    }
+    }*/
 }

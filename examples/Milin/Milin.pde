@@ -1,19 +1,19 @@
-import com.badlogic.gdx.utils.*;
 import com.badlogic.gdx.math.*;
 import gwel.game.anim.*;
 import gwel.game.graphics.*;
-import gwel.game.entities.Avatar;
 
 
-MyRenderer renderer;
+PRenderer renderer;
 ComplexShape mill;
+Posture posture;
+PostureTree pt;
+
 
 void setup() {
-  size(700, 700);
-  colorMode(HSB, 1f);
+  size(700, 700, P2D);
+  //colorMode(HSB, 1f);
 
-  renderer = new MyRenderer(this);
-
+  renderer = new PRenderer(this);
   makeMill();
 
   background(1f);
@@ -21,52 +21,60 @@ void setup() {
 
 
 void makeMill() {
-  int numWings = floor(random(8, 32));
-  float innerRadius = numWings * 4;
-  println(innerRadius);
-  float duration = 4f;
-  int r1 = floor(random(1, 15));
+  int numWings = floor(random(12, 32));
+  float innerRadius = numWings * 3.2f;
+  int r1 = floor(random(1, 7));
+  float speed = 10f;
+  float dur, mult, offset;
 
   // Single wing shape
   float[] verts = new float[] {0f, 10f, 100f, 18f, 106f, 6f, 110f, 0f, 106f, -6f, 100f, -18f, 0f, -10f};
-  ComplexShape wing = new ComplexShape();
+  ComplexShape wing = new ComplexShape("wing");
   DrawablePolygon shape = new DrawablePolygon(verts);
-  color c = color(random(1), 0.4f, 1f);
-  shape.setColor(red(c), green(c), blue(c), 0.5f);
+  colorMode(HSB, 1f);
+  color c = color(random(1f), 0.32f, 0.85f);
+  shape.setColor(red(c), green(c), blue(c), 1f);
+  colorMode(RGB, 255);
   wing.addShape(shape);
-  TimeFunction stretch = new TFSin(duration*random(0.8f, 2f), 0.4f, map(numWings, 8, 32, 0.5f, 2f), 0f);
-  wing.addAnimation(new Animation(stretch, Animation.AXE_SX));
-  TimeFunction translate = new TFConstant(innerRadius);
-  wing.addAnimation(new Animation(translate, Animation.AXE_X));
+  wing.hardTranslate(innerRadius, 0f);
+  wing.setLocalOrigin(new Vector2(0f, 0f));
 
-  mill = new ComplexShape();
+  mill = new ComplexShape("mill");
   for (int i=0; i<numWings; i++) {
     ComplexShape newWing = wing.copy();
-    newWing.setColorMod(random(-0.1, 0.1), random(-0.1, 0.1), random(-0.1, 0.1), 1f);
-    newWing.getAnimation(0).setParam("phase", r1*i*360/numWings);
-    TimeFunction rotate = new TFConstant((float) i/numWings);
-    // Functions value get automaticaly mapped to range [-180,180] when using rotation axe 
-    // but you could also a value in degrees between 0 and 360 to TFConstant and invoke setAmp(1.f) on the animation
-    newWing.addAnimation(new Animation(rotate, Animation.AXE_ROT));
     mill.addShape(newWing);
   }
+  pt = PostureTree.buildTree(mill);
 
-  TimeFunction spin = new TFSpin(0f, duration*random(2f, 4f), 1f);
-  mill.addAnimation(new Animation(spin, Animation.AXE_ROT));
+  dur = speed * random(0.4f, 2f);
+  mult = 0.25f;
+  offset = map(numWings, 8, 32, 1, 1.5);
+  float colDelta = 0.07;
+  for (int i=0; i<numWings; i++) {
+    ComplexShape cs = mill.getChildren().get(i);
+    cs.setTint(random(-colDelta, colDelta), random(-colDelta, colDelta), random(-colDelta, colDelta), 1f);
+    TimeFunction stretch = new TFSin(dur, mult, offset, (r1*i*360/numWings)-180);
+    pt.findByShape(cs).getAnimations().add(new Animation(stretch, Animation.AXE_SX));
+    TimeFunction rotate = new TFConstant((float) i/numWings);
+    pt.findByShape(cs).getAnimations().add(new Animation(rotate, Animation.AXE_ROT));
+  }
+  TimeFunction spin = new TFSpin(0f, speed*random(2f, 4f), 1f);
+  pt.getAnimations().add(new Animation(spin, Animation.AXE_ROT));
+  posture = new Posture();
+  posture.setPostureTree(pt);
 }
 
+
 void mouseClicked() {
-  background(1f);
   makeMill();
 }
 
 
 void draw() {
-  background(1);
+  background(255);
   pushMatrix();
-  translate(width/2, height/2);  
-  mill.update(1f/frameRate);
-  mill.draw(renderer);
-
+  translate(width/2, height/2);
+  posture.update(1f/frameRate);
+  mill.draw(renderer, pt);
   popMatrix();
 }

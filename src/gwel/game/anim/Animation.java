@@ -5,9 +5,6 @@ import com.badlogic.gdx.math.Affine2;
 import com.badlogic.gdx.math.Interpolation;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
-import com.badlogic.gdx.utils.JsonValue;
-
-import java.util.Arrays;
 
 
 public class Animation {
@@ -24,15 +21,6 @@ public class Animation {
     public static final int AXE_B = 10;
     // Must be the same order as the enums
     public static final String[] axeNames = {"x", "y", "rotation", "scale x", "scale y", "zoom", "alpha", "rgb", "r", "g", "b"};
-    public static final Class[] timeFunctions = {
-            //TFConstant.class,
-            TFEaseFromTo.class,
-            TFTimetable.class,
-            TFSin.class,
-            TFSpin.class,
-            TFRandomEase.class,
-            TFRandomBlink.class,
-    };
     public static final String[] interpolationNames = new String[]{
             "linear",
             "smooth", "smooth2", "smoother",
@@ -65,33 +53,26 @@ public class Animation {
             "bounce", "bounceIn", "bounceOut"
     };
     private TimeFunction fn;
-    private int axe;
-    private float value;
-    private Affine2 transform;
-    private float[] colorMod;
+    private int axe = AXE_X;
+    private final Affine2 transform = new Affine2();
+    private final float[] colorMod = new float[] {0f, 0f, 0f, 1f};
+    private static final float[] noColor = new float[] {0f, 0f, 0f, 1f};
     private float amp = 1.0f;
     private boolean inv = false;
     private float mult = 1.0f;
+    private final boolean isActive = true;
+    private float value;
 
 
     public Animation(TimeFunction fn) {
         this.fn = fn;
-        this.axe = AXE_X;
-        value = 0.0f;
-        transform = new Affine2();
-        colorMod = new float[] {0f, 0f, 0f, 1f};
     }
 
     public Animation(TimeFunction fn, int axe) {
         this(fn);
         setAxe(axe);
     }
-
-    public Animation(TimeFunction fn, int axe, float amp) {
-        this(fn, axe);
-        setAmp(amp);
-    }
-
+    
 
     public static Interpolation getInterpolation(int n) {
         try {
@@ -164,47 +145,35 @@ public class Animation {
         }
     }
 
-
-    public Vector2 getTranslation() {
-        float tx = axe==AXE_X ? value : 0.0f;
-        // Reverse y axis
-        float ty = axe==AXE_Y ? -value : 0.0f;
-        return new Vector2(tx, ty);
-    }
-
-
-    public float getValue() { return value; }
-
-
-    public float getRotation() {
-        return axe==AXE_ROT ? value : 0.0f;
-    }
-
-
     public Vector2 getScale() {
-        float sx = axe==AXE_SX || axe==AXE_Z ? value : 1.0f;
-        float sy = axe==AXE_SY || axe==AXE_Z ? value : 1.0f;
+        float sx = axe == AXE_SX || axe == AXE_Z ? value : 1.0f;
+        float sy = axe == AXE_SY || axe == AXE_Z ? value : 1.0f;
         return new Vector2(sx, sy);
     }
 
 
+    public Vector2 getTranslation() {
+        float tx = axe == AXE_X ? value : 0.0f;
+        // Reverse y axis
+        float ty = axe == AXE_Y ? -value : 0.0f;
+        return new Vector2(tx, ty);
+    }
+
+
+    public float getRotation() {
+        return axe == AXE_ROT ? value : 0.0f;
+    }
+
+
+    //public float getValue() { return fn.getValue(); }
+
+    public void update() { value = mult * fn.getValue(); }
+
+
     public Affine2 getTransform() {
-        return transform;
-    }
+        if (!isActive)
+            return transform.idt();
 
-
-    public float[] getColorMod() { return colorMod; }
-
-
-    public void reset() {
-        fn.reset();
-        transform.idt();
-    }
-
-
-    public void update(float dtime) {
-        fn.update(dtime);
-        value = mult * fn.getValue();
         if (axe < AXE_ALPHA) {
             transform.setToTranslation(getTranslation());
             transform.scale(getScale());
@@ -215,20 +184,41 @@ public class Animation {
             colorMod[2] = axe == AXE_B || axe == AXE_RGB ? value : 0f;
             colorMod[3] = axe == AXE_ALPHA ? value : 1f;
         }
+        return transform;
     }
 
-    public boolean isStopped() { return fn.state == TimeFunction.STOPPED; }
 
-    public boolean isRunning() { return fn.state == TimeFunction.RUNNING; }
+    public float[] getColorMod() {
+        if (isActive && axe >= AXE_ALPHA) {
+            colorMod[0] = axe == AXE_R || axe == AXE_RGB ? value : 0f;
+            colorMod[1] = axe == AXE_G || axe == AXE_RGB ? value : 0f;
+            colorMod[2] = axe == AXE_B || axe == AXE_RGB ? value : 0f;
+            colorMod[3] = axe == AXE_ALPHA ? value : 1f;
+            return colorMod;
+        }
+        return noColor;
+    }
+
+
+    /*public void reset() {
+        fn.reset();
+        transform.idt();
+    }*/
+
+
+    //public boolean isStopped() { return fn.state == TimeFunction.STOPPED; }
+
+    //public boolean isRunning() { return fn.state == TimeFunction.RUNNING; }
 
 
     public Animation copy() {
         try {
-            TimeFunction fnCopy = fn.getClass().newInstance();
+            TimeFunction fnCopy = fn.getClass().getConstructor().newInstance();
             fnCopy.setParams(fn.getParamsCopy());
             if (fnCopy instanceof TFTimetable)
                 ((TFTimetable) fnCopy).setTable(((TFTimetable) fn).getTable().clone());
-            Animation newAnimation = new Animation(fnCopy, axe);
+            Animation newAnimation = new Animation(fnCopy);
+            newAnimation.setAxe(axe);
             newAnimation.setInv(inv);
             newAnimation.setAmp(amp);
             return newAnimation;
@@ -250,10 +240,10 @@ public class Animation {
         return result;
     }
 
-
-    public static Animation fromJson(JsonValue json) {
-        Animation anim = null;
-        int axe = Arrays.asList(Animation.axeNames).indexOf(json.getString("axe"));
+    /*
+    public static Animation2 fromJson(JsonValue json) {
+        Animation2 anim = null;
+        int axe = Arrays.asList(Animation2.axeNames).indexOf(json.getString("axe"));
         boolean inv = json.getBoolean("inv", false);
         float amp = json.getFloat("amp", 1.0f);
 
@@ -280,7 +270,7 @@ public class Animation {
                 }
             }
             fn.reset();
-            anim = new Animation(fn, axe);
+            anim = new Animation2(fn, axe);
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println("Could not recreate animation function from json file");
@@ -289,14 +279,14 @@ public class Animation {
         anim.setAmp(amp);
         anim.setInv(inv);
         return anim;
-    }
+    }*/
 
 
-    public JsonValue toJson() {
+    /*public JsonValue toJson() {
         JsonValue json = new JsonValue(JsonValue.ValueType.object);
         String[] fullFunctionName = fn.getClass().getName().split("[.]");
         json.addChild("function", new JsonValue(fullFunctionName[fullFunctionName.length-1]));
-        json.addChild("axe", new JsonValue(Animation.axeNames[axe]));
+        json.addChild("axe", new JsonValue(Animation2.axeNames[axe]));
         json.addChild("inv", new JsonValue(getInv()));
         json.addChild("amp", new JsonValue(getAmp()));
 
@@ -319,5 +309,11 @@ public class Animation {
             }
         }
         return json;
+    }*/
+
+    public String toString() {
+        String s = String.format(" [fn: %s axe: %s amp: %.1f inv: %s]",
+                fn, axeNames[axe], amp, inv);
+        return super.toString() + s;
     }
 }

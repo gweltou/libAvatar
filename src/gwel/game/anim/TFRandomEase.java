@@ -62,7 +62,8 @@ public class TFRandomEase extends TimeFunction {
         super.reset();
         moving = true;
         easeTime = 0f;
-        prevValue = 0f;
+        value = (float) params[3].getValue() + (float) params[2].getValue();
+        prevValue = value;
         targetValue = (float) params[3].getValue() + MathUtils.random((float) params[2].getValue());
         interpolation = Animation.getInterpolation((String) params[4].getValue());
     }

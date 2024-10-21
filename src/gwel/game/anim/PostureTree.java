@@ -2,21 +2,21 @@ package gwel.game.anim;
 
 import com.badlogic.gdx.math.Affine2;
 import com.badlogic.gdx.math.Vector2;
-import gwel.game.graphics.ComplexShape2;
+import gwel.game.graphics.ComplexShape;
 
 import java.util.ArrayList;
 
 
 public class PostureTree {
     private final PostureTree parent;
-    private final ComplexShape2 shape;
+    private final ComplexShape shape;
     private final ArrayList<PostureTree> children = new ArrayList<>();
-    private final ArrayList<Animation2> animations = new ArrayList<>();
+    private final ArrayList<Animation> animations = new ArrayList<>();
     private final Affine2 transform = new Affine2();
     private final float[] colorMod = new float[] {0f, 0f, 0f, 1f};
 
 
-    public PostureTree(ComplexShape2 shape, PostureTree parent) {
+    public PostureTree(ComplexShape shape, PostureTree parent) {
         this.parent = parent;
         this.shape = shape;
     }
@@ -26,16 +26,18 @@ public class PostureTree {
 
     public ArrayList<PostureTree> getChildren() { return children; }
 
-    public ArrayList<Animation2> getAnimations() { return animations; }
+    public ArrayList<Animation> getAnimations() { return animations; }
 
     public Affine2 getTransform() { return transform; }
 
     public float[] getColorMod() { return colorMod; }
 
 
-    public static PostureTree buildTree(ComplexShape2 shape, PostureTree parent) {
+    public static PostureTree buildTree(ComplexShape shape) { return buildTree(shape, null); }
+
+    public static PostureTree buildTree(ComplexShape shape, PostureTree parent) {
         PostureTree pt = new PostureTree(shape, parent);
-        for (ComplexShape2 child : shape.getChildren()) {
+        for (ComplexShape child : shape.getChildren()) {
             pt.children.add(PostureTree.buildTree(child, pt));
         }
         return pt;
@@ -54,7 +56,7 @@ public class PostureTree {
                 shape.getTransform().applyTo(pivotPoint);
             }
             transform.setToTranslation(-pivotPoint.x, -pivotPoint.y);
-            for (Animation2 anim : animations) {
+            for (Animation anim : animations) {
                 anim.update();
                 if (anim.getAxe() < 6) {
                     transform.preMul(anim.getTransform());
@@ -74,7 +76,7 @@ public class PostureTree {
     }
 
 
-    public PostureTree findByShape(ComplexShape2 shape) {
+    public PostureTree findByShape(ComplexShape shape) {
         if (shape.equals(this.shape))
             return this;
         for (PostureTree child : children) {
@@ -100,7 +102,7 @@ public class PostureTree {
 
     public TimeFunction[] getUniqueTimeFunctions() {
         ArrayList<TimeFunction> functions = new ArrayList<>();
-        for (Animation2 anim : animations) {
+        for (Animation anim : animations) {
             if (!functions.contains(anim.getFunction()))
                 functions.add(anim.getFunction());
         }

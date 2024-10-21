@@ -1,5 +1,5 @@
 import com.badlogic.gdx.math.*;
-import gwel.game.anim.Animation;
+import gwel.game.anim.Animation_old;
 
 
 int frameWidth = 100;

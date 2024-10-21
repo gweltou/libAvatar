@@ -4,8 +4,6 @@ package gwel.game.graphics;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.math.Affine2;
 import gwel.game.utils.MatrixStack;
-import processing.core.PApplet;
-
 import java.util.ArrayDeque;
 
 
@@ -13,6 +11,7 @@ public abstract class Renderer {
     private final MatrixStack matrixStack = new MatrixStack();
     public final Color color = new Color();
     public final ArrayDeque<float[]> colorStack = new ArrayDeque<>();
+    private boolean colorLocked = false;
 
 
     protected Renderer() {
@@ -20,18 +19,24 @@ public abstract class Renderer {
     }
 
 
+    public void lockColor() { colorLocked = true; }
+
+    public void unlockColor() { colorLocked = false; }
+
     public void setColor(Color color) {
         setColor(color.r, color.g, color.b, color.a);
     }
 
     public void setColor(float r, float g, float b, float a) {
-        color.set(r, g, b, a);
-        float[] colorMod = colorStack.getFirst();
-        color.r += colorMod[0];
-        color.g += colorMod[1];
-        color.b += colorMod[2];
-        color.a *= colorMod[3];
-        color.clamp();
+        if (!colorLocked) {
+            color.set(r, g, b, a);
+            float[] colorMod = colorStack.getFirst();
+            color.r += colorMod[0];
+            color.g += colorMod[1];
+            color.b += colorMod[2];
+            color.a *= colorMod[3];
+            color.clamp();
+        }
     }
 
 

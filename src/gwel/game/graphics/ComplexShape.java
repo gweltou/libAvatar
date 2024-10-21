@@ -5,15 +5,16 @@ import com.badlogic.gdx.math.Affine2;
 import com.badlogic.gdx.math.Bezier;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.JsonValue;
-import gwel.game.anim.Animation;
+import gwel.game.anim.PostureTree;
 import gwel.game.utils.BoundingBox;
 import gwel.game.utils.DummyPShape;
 import processing.core.PMatrix3D;
 import processing.core.PShape;
 import processing.core.PVector;
 
-
 import java.util.ArrayList;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static gwel.game.graphics.Utils.pColorToGDXColor;
 import static processing.core.PConstants.*;
@@ -21,36 +22,23 @@ import static processing.core.PConstants.*;
 
 public class ComplexShape implements Shape {
     private final String id;
-    protected ComplexShape parent;
-    private final ArrayList<ComplexShape> children;
-    private final ArrayList<Shape> shapes; // ComplexShapes and simple shapes
-    private Animation[] animations;
-    private final Vector2 localOrigin;  // Pivot point
-    private final Affine2 animTransform;
-    protected final Affine2 preTransform; // To store manual static transform
-    private final Affine2 oldTransform, nextTransform;  // Used while transitioning between 2 postures
-    private boolean transitioning = false;
-    private float transitionDuration;
-    private float transitionTime;
-    private final float[] tint, colorMod;
-    private final BoundingBox boundingBox;
+    protected ComplexShape parent = null;
+    private final ArrayList<ComplexShape> children = new ArrayList<>();
+    private final ArrayList<Shape> shapes = new ArrayList<>(); // ComplexShapes and simple shapes
+    private final Vector2 localOrigin = new Vector2();  // Pivot point
+    protected final Affine2 preTransform = new Affine2();
+    private final float[] tint = new float[] {0f, 0f, 0f, 1f};
+    private final BoundingBox boundingBox = new BoundingBox();
     private boolean boundingBox_dirty;
 
+
     public ComplexShape(String id) {
+        assert (!id.equals("")) : "id should not be empty";
         this.id = id;
-        parent = null;
-        children = new ArrayList<>();
-        shapes = new ArrayList<>();
-        localOrigin = new Vector2();
-        animations = new Animation[0];
-        animTransform = new Affine2();
-        preTransform = new Affine2();
-        oldTransform = new Affine2();
-        nextTransform = new Affine2();
-        tint = new float[] {0f, 0f, 0f, 1f};
-        colorMod = new float[] {0f, 0f, 0f, 1f};
-        boundingBox = new BoundingBox();
     }
+
+
+    public ComplexShape getParent() { return parent; }
 
     private ComplexShape getRootShape() {
         if (parent == null)
@@ -85,31 +73,43 @@ public class ComplexShape implements Shape {
         return children;
     }
 
-    /**
-     * Remove all children
-     */
-    public void clear() {
-        children.clear();
-        shapes.clear();
-    }
 
+    public Vector2 getLocalOrigin() { return localOrigin.cpy(); }
 
-    public Vector2 getLocalOrigin() {
-        return localOrigin.cpy();
-    }
-
-    public void setLocalOrigin(Vector2 pos) {
-        localOrigin.set(pos);
-    }
+    public void setLocalOrigin(Vector2 pos) { localOrigin.set(pos); }
 
 
     public BoundingBox getBoundingBox() {
         if (boundingBox_dirty) {
             boundingBox.reset();
-            Affine2 globalTransform = getAbsoluteTransform2(animTransform);
+            Affine2 globalTransform = getAbsoluteTransform();
             for (Shape shape : shapes) {
-                if (shape.getClass() == ComplexShape.class) {
+                if (shape instanceof ComplexShape) {
                     boundingBox.include( ((ComplexShape) shape).getBoundingBox() );
+                } else if (shape instanceof DrawablePolygon) {
+                    BoundingBox bb = new BoundingBox();
+                    float[] vertices = ((DrawablePolygon) shape).getVertices();
+                    for (int i = 0; i < vertices.length; i += 2) {
+                        Vector2 p = new Vector2(vertices[i], vertices[i+1]);
+                        globalTransform.applyTo(p);
+                        bb.include(p);
+                    }
+                    boundingBox.include(bb);
+                }
+            }
+            boundingBox_dirty = false;
+        }
+        return boundingBox;
+    }
+
+    public BoundingBox getBoundingBox(PostureTree pt) {
+        if (boundingBox_dirty) {
+            boundingBox.reset();
+            Affine2 globalTransform = getAbsoluteTransform(pt);
+            int iChild = 0;
+            for (Shape shape : shapes) {
+                if (shape instanceof ComplexShape) {
+                    boundingBox.include( ((ComplexShape) shape).getBoundingBox(pt.getChildren().get(iChild++)) );
                 } else if (shape instanceof DrawablePolygon) {
                     BoundingBox bb = new BoundingBox();
                     float[] vertices = ((DrawablePolygon) shape).getVertices();
@@ -132,23 +132,42 @@ public class ComplexShape implements Shape {
             child.invalidateBoundingBox();
     }
 
-    public boolean contains(Vector2 position) {
-        return contains(position.x, position.y);
-    }
 
     public boolean contains(float x, float y) {
         Vector2 transformedPoint = new Vector2(x, y);
-        Affine2 globalTransform = getAbsoluteTransform2(animTransform);
+        Affine2 globalTransform = getAbsoluteTransform();
         if (globalTransform.m00 == 0f || globalTransform.m11 == 0f)
             return false;
         globalTransform.inv().applyTo(transformedPoint);
         if (getBoundingBox().contains(x, y)) {
             for (Shape shape : shapes) {
-                if (shape.getClass() == ComplexShape.class) {
+                if (shape instanceof ComplexShape) {
                     if (shape.contains(x, y)) return true;
                 } else {
                     // Simple shapes are not aware of their transformation
-                    if (shape.contains(transformedPoint))
+                    if (shape.contains(transformedPoint.x, transformedPoint.y))
+                        return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public boolean contains(float x, float y, PostureTree pt) {
+        Affine2 globalTransform = getAbsoluteTransform(pt);
+        if (globalTransform.m00 == 0f || globalTransform.m11 == 0f) {
+            return false;
+        }
+        if (getBoundingBox(pt).contains(x, y)) {
+            Vector2 transformedPoint = new Vector2(x, y);
+            globalTransform.inv().applyTo(transformedPoint);
+            int iShape = 0;
+            for (Shape shape : shapes) {
+                if (shape instanceof ComplexShape) {
+                    if (((ComplexShape) shape).contains(x, y, pt.getChildren().get(iShape++))) return true;
+                } else {
+                    // Simple shapes are not aware of their transformation
+                    if (shape.contains(transformedPoint.x, transformedPoint.y))
                         return true;
                 }
             }
@@ -157,63 +176,55 @@ public class ComplexShape implements Shape {
     }
 
 
-    /*
-    // Unused
-    public Affine2 getTransform() {
-        return new Affine2(animTransform).preMul(preTransform);
-    }
-    */
-
     /**
-     * Get the transform state of this shape at this particular moment
-     * That includes parents transform, soft transform and animations transform
+     * Get the transform state of this shape
+     * That includes parents transforms and soft transform
      *
      * @return this shape's transform affine matrix
      */
-    /*public Affine2 getAbsoluteTransform() {
+    public Affine2 getAbsoluteTransform() {
         Affine2 combined = new Affine2();
-        combined.mul(animTransform);
         combined.mul(preTransform);
         if (parent == null) {
             return combined;
         } else {
             return parent.getAbsoluteTransform().mul(combined);
         }
-    }*/
-    public Affine2 getAbsoluteTransform() {
-        return getAbsoluteTransform2(animTransform);
     }
+
 
     /**
      * V 2.0
-     *
-     * Get the transform state of this shape at this particular moment
+     * Get the transform state of this shape at this particular animated moment
      * That includes parents transform and soft transform and animations transform
      *
      * @return this shape's transform affine matrix
      */
-    public Affine2 getAbsoluteTransform2(Affine2 animTransform) {
+    public Affine2 getAbsoluteTransform(PostureTree pt) {
         Affine2 combined = new Affine2();
-        combined.mul(animTransform);
+        if (pt != null) {
+            combined.mul(pt.getTransform());
+        }
         combined.mul(preTransform);
         if (parent == null) {
             return combined;
         } else {
-            return parent.getAbsoluteTransform().mul(combined);
+            assert pt != null;
+            return parent.getAbsoluteTransform(pt.getParent()).mul(combined);
         }
     }
 
 
     /**
+     * Used by SGAnimator
      * Apply a non-destructive pre-transformation to the shapes
      */
     public void softTransform(Affine2 transform) {
-        Affine2 currentTransform = getAbsoluteTransform2(animTransform);
+        Affine2 currentTransform = getAbsoluteTransform();
         Affine2 invTransform = (new Affine2(currentTransform)).inv();
         preTransform.mul(invTransform);
         preTransform.mul(transform);
         preTransform.mul(currentTransform);
-        //transform.applyTo(localOrigin);
         getRootShape().invalidateBoundingBox();
     }
 
@@ -226,10 +237,11 @@ public class ComplexShape implements Shape {
         preTransform.set(transform);
     }
 
-    public Affine2 getTransform() {
-        return new Affine2(preTransform);
-    }
+    public Affine2 getTransform() { return new Affine2(preTransform); }
 
+    /**
+     * Used by SGAnimator
+     */
     public void resetTransform() {
         preTransform.idt();
         getRootShape().invalidateBoundingBox();
@@ -242,13 +254,6 @@ public class ComplexShape implements Shape {
         transform.applyTo(localOrigin);
         for (Shape shape : shapes)
             shape.hardTransform(transform);
-        if (transform.m00 != 0) {
-            // Must scale animation tree
-            // MUST BE REWRITTEN, this is ugly
-            for (Animation animation : animations)
-                animation.scale(transform.m00);
-        }
-
         getRootShape().invalidateBoundingBox();
     }
 
@@ -284,7 +289,12 @@ public class ComplexShape implements Shape {
     }
 
 
-    // Used for SgAnimator
+    /**
+     * Used by SGAnimator
+     *
+     * @param pre prefix to add to the names of parts
+     * @return a list of part names prefixed with the given string, according to their hierarchy
+     */
     public ArrayList<String> getIdListPre(String pre) {
         ArrayList<String> list = new ArrayList<>();
         list.add(pre + id);
@@ -305,48 +315,7 @@ public class ComplexShape implements Shape {
     }
 
 
-    public Animation[] getAnimationList() {
-        return animations;
-    }
-
-    public void setAnimationList(Animation[] animList) {
-        animations = animList;
-    }
-
-    public void clearAnimationList() {
-        animTransform.idt();
-        animations = new Animation[0];
-        resetColorMod();
-    }
-
-
-    public Animation getAnimation(int n) {
-        return animations[n];
-    }
-
-    public void setAnimation(int i, Animation anim) {
-        animations[i] = anim;
-    }
-
-    public void addAnimation(Animation anim) {
-        Animation[] newAnimations = new Animation[animations.length + 1];
-        System.arraycopy(animations, 0, newAnimations, 0, animations.length);
-        newAnimations[animations.length] = anim;
-        animations = newAnimations;
-    }
-
-    public void removeAnimation(int idx) {
-        Animation[] newAnimations = new Animation[animations.length - 1];
-        int i = 0;
-        for (int n = 0; n < newAnimations.length; n++) {
-            if (i == idx)
-                i++;
-            newAnimations[n] = animations[i++];
-        }
-        animations = newAnimations;
-    }
-
-
+    /*
     public void update(float dtime) {
         // dtime is in seconds
         Vector2 pivotPoint = getLocalOrigin();
@@ -383,51 +352,13 @@ public class ComplexShape implements Shape {
             animTransform.translate(-pivotPoint.x, -pivotPoint.y);
         }
 
-        for (ComplexShape child : children)
+        for (ComplexShape2 child : children)
             child.update(dtime);
-    }
-
-    public void reset() {
-        if (animations.length > 0) {
-            for (Animation anim : animations) {
-                anim.reset();
-            }
-            animTransform.idt();
-        }
-        for (ComplexShape child : children)
-            child.reset();
-        resetColorMod();
-    }
-
-    private void resetColorMod() {
-        colorMod[0] = 0f;
-        colorMod[1] = 0f;
-        colorMod[2] = 0f;
-        colorMod[3] = 1f;
-    }
-
-
-    // Returns true if all animations are running
-    public boolean isAnimationRunning() {
-        boolean running = true;
-        for (Animation animation : animations) {
-            running = running && animation.isRunning();
-        }
-        return running;
-    }
-
-    // Returns true if any animation is stopped
-    public boolean isAnimationStopped() {
-        for (Animation animation : animations) {
-            if (animation.isStopped())
-                return true;
-        }
-        return false;
-    }
+    }*/
 
 
     // Maybe could put a "fixtransform" parameter here
-    public void transitionAnimation(Animation[] nextAnims, float duration) {
+    /*public void transitionAnimation(Animation[] nextAnims, float duration) {
         // duration is in seconds
         if (animations.length > 0) {
             transitioning = true;
@@ -443,83 +374,100 @@ public class ComplexShape implements Shape {
             }
         }
         animations = nextAnims;
-    }
+    }*/
 
 
     /**
      *  Apply a constant tint to the shape
      */
-    public void setColorMod(float mr, float mg, float mb, float ma) {
-        tint[0] = mr;
-        tint[1] = mg;
-        tint[2] = mb;
-        tint[3] = ma;
+    public void setTint(Color color) {
+        setTint(color.r, color.g, color.b, color.a);
     }
 
     /**
      *  Apply a constant tint to the shape
      */
-    public void setColorMod(Color colorMod) {
-        tint[0] = colorMod.r;
-        tint[1] = colorMod.g;
-        tint[2] = colorMod.b;
-        tint[3] = colorMod.a;
+    public void setTint(float r, float g, float b, float a) {
+        tint[0] = r;
+        tint[1] = g;
+        tint[2] = b;
+        tint[3] = a;
     }
+
+    public float[] getTint() { return tint; }
 
 
     public void draw(Renderer renderer) {
         // preTransform is applied BEFORE animTransform
-        renderer.pushMatrix(animTransform);
+        //renderer.pushMatrix(animTransform);
         renderer.pushMatrix(preTransform);
-        renderer.pushColorMod(colorMod);
+        //renderer.pushColorMod(colorMod);
         for (Shape shape : shapes)
             shape.draw(renderer);
-        renderer.popColorMod();
+        //renderer.popColorMod();
         renderer.popMatrix();
-        renderer.popMatrix();
+        //renderer.popMatrix();
     }
 
 
-    // Used by processing animation editor
-    public void drawSelected(PRenderer renderer) {
-        renderer.pushMatrix(animTransform);
+    public void draw(Renderer renderer, PostureTree pt) {
+        renderer.pushColorMod(pt.getColorMod());
+        renderer.pushMatrix(pt.getTransform());
+        renderer.pushMatrix(preTransform);
+        int i = 0;
+        for (Shape shape : shapes) {
+            if (shape instanceof ComplexShape)
+                ((ComplexShape) shape).draw(renderer, pt.getChildren().get(i++));
+            else
+                shape.draw(renderer);
+        }
+        renderer.popMatrix();
+        renderer.popMatrix();
+        renderer.popColorMod();
+    }
+
+
+    /**
+     * Used by SGAnimator
+     * Draw shape and its children
+     */
+    /*public void drawSelected(PRenderer renderer) {
+        //renderer.pushMatrix(pt.getTransform());
         renderer.pushMatrix(preTransform);
         for (Shape shape : shapes)
             shape.drawSelected(renderer);
         renderer.popMatrix();
-        renderer.popMatrix();
-    }
+        //renderer.popMatrix();
+    }*/
 
     // Used for processing animation editor
-    public void drawSelectedOnly(PRenderer renderer) {
+    /*public void drawSelectedOnly(PRenderer renderer) {
         if (renderer.getSelected() == this) {
             // Highlight this shape
             drawSelected(renderer);
         } else {
             renderer.pushMatrix(animTransform);
             renderer.pushMatrix(preTransform);
-            for (ComplexShape shape : children)
+            for (ComplexShape2 shape : children)
                 shape.drawSelectedOnly(renderer);
             renderer.popMatrix();
             renderer.popMatrix();
         }
-    }
+    }*/
 
 
     /**
      * V 2.0
-     *
-     * Draw the local origin of this shape
-     *
-     * @return
+     * Used by SGAnimator
+     * Draw the pivot point of this shape while animated
      */
-    public void drawPivot(Renderer renderer) {
+    public void drawPivot(Renderer renderer, PostureTree pt) {
         Vector2 point = getLocalOrigin();
-        getAbsoluteTransform2(animTransform).applyTo(point);
+        getAbsoluteTransform(pt).applyTo(point);
         //renderer.getTransform().applyTo(point);
-
         renderer.color.set(0f, 0f, 1f, 1f);
         renderer.circle(point.x, point.y, 4/renderer.getTransform().m00);
+
     }
 
 
@@ -542,22 +490,25 @@ public class ComplexShape implements Shape {
 
     public ComplexShape copy() {
         // XXX: should choose an id
-        ComplexShape copy = new ComplexShape("");
+        Pattern pattern = Pattern.compile("$(.+)_(\\d+)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(getId());
+        int nCopy = 1;
+        String newId = "";
+        if (matcher.find()) {
+            nCopy = Integer.valueOf(matcher.group(1)) + 1;
+            newId = matcher.group(0) + "_" + String.valueOf(nCopy);
+        } else {
+            newId = getId() + "_1";
+        }
+        ComplexShape copy = new ComplexShape(newId);
         for (Shape shape : shapes)
             copy.addShape(shape.copy());
         copy.setLocalOrigin(localOrigin);
-        Animation[] animList = new Animation[animations.length];
-        for (int i=0; i<animList.length; i++)
-            animList[i] = animations[i].copy();
-        copy.setAnimationList(animList);
-
         return copy;
     }
 
 
-    /**
-     * Used by SGAnimator
-     */
+    // Used by processing animation editor
     public static ComplexShape fromPShape(PShape svgShape) {
         Shape shape = fromPShape(svgShape, new PMatrix3D(), 0);
         if (!(shape instanceof ComplexShape)) {
@@ -569,9 +520,7 @@ public class ComplexShape implements Shape {
         return (ComplexShape) shape;
     }
 
-    /**
-     * Used by SGAnimator
-     */
+    // Used by processing animation editor
     public static Shape fromPShape(PShape svgShape, PMatrix3D matrix, int depth) {
         //StringBuilder prefix = new StringBuilder();
 
@@ -758,22 +707,27 @@ public class ComplexShape implements Shape {
             cs.preTransform.m12 = transform[5];
         }
 
-        if (json.has("animation")) {
-            for (JsonValue animJson : json.get("animation").iterator())
-                cs.addAnimation(Animation.fromJson(animJson));
-        }
-
         return cs;
     }
 
 
-    public JsonValue toJson(boolean saveAnim) {
+    private float roundPrec(float val, float prec) {
+        return Math.round(val * prec) / prec;
+    }
+
+    public JsonValue toJson() {
+        return toJson(8);
+    }
+
+    public JsonValue toJson(int precision) {
+        float prec = (float) Math.pow(2, precision);
+
         JsonValue json = new JsonValue(JsonValue.ValueType.object);
         json.addChild("id", new JsonValue(id));
 
         JsonValue origin = new JsonValue(JsonValue.ValueType.array);
-        origin.addChild(new JsonValue(localOrigin.x));
-        origin.addChild(new JsonValue(localOrigin.y));
+        origin.addChild(new JsonValue(roundPrec(localOrigin.x, prec)));
+        origin.addChild(new JsonValue(roundPrec(localOrigin.y, prec)));
         json.addChild("origin", origin);
 
         if (!preTransform.isIdt()) {
@@ -790,23 +744,42 @@ public class ComplexShape implements Shape {
         JsonValue shapes = new JsonValue(JsonValue.ValueType.array);
         for (Shape shape : getShapes()) {
             if (shape instanceof ComplexShape) {
-                shapes.addChild(((ComplexShape) shape).toJson(saveAnim));
+                shapes.addChild(((ComplexShape) shape).toJson());
+            } else if (shape instanceof DrawableCircle) {
+                DrawableCircle c = (DrawableCircle) shape;
+                JsonValue s = new JsonValue(JsonValue.ValueType.object);
+                s.addChild("type", new JsonValue("circle"));
+
+                JsonValue colorArray = new JsonValue(JsonValue.ValueType.array);
+                colorArray.addChild(new JsonValue(roundPrec(c.getColor().r, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(c.getColor().g, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(c.getColor().b, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(c.getColor().a, 256f)));
+                s.addChild("color", colorArray);
+
+                JsonValue paramsArray = new JsonValue(JsonValue.ValueType.array);
+                paramsArray.addChild(new JsonValue(roundPrec(c.getCenter().x, prec)));
+                paramsArray.addChild(new JsonValue(roundPrec(c.getCenter().y, prec)));
+                paramsArray.addChild(new JsonValue(roundPrec(c.getRadius(), prec)));
+                paramsArray.addChild(new JsonValue(c.getSegments()));
+                s.addChild("params", paramsArray);
+
+                shapes.addChild(s);
             } else if (shape instanceof DrawablePolygon) {
                 DrawablePolygon p = (DrawablePolygon) shape;
                 JsonValue s = new JsonValue(JsonValue.ValueType.object);
                 s.addChild("type", new JsonValue("polygon"));
 
                 JsonValue colorArray = new JsonValue(JsonValue.ValueType.array);
-                colorArray.addChild(new JsonValue(p.getColor().r));
-                colorArray.addChild(new JsonValue(p.getColor().g));
-                colorArray.addChild(new JsonValue(p.getColor().b));
-                colorArray.addChild(new JsonValue(p.getColor().a));
+                colorArray.addChild(new JsonValue(roundPrec(p.getColor().r, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(p.getColor().g, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(p.getColor().b, 256f)));
+                colorArray.addChild(new JsonValue(roundPrec(p.getColor().a, 256f)));
                 s.addChild("color", colorArray);
 
                 JsonValue verticesArray = new JsonValue(JsonValue.ValueType.array);
                 for (float vert : p.getVertices()) {
-                    // No use trying to round values here...
-                    verticesArray.addChild(new JsonValue(vert));
+                    verticesArray.addChild(new JsonValue(roundPrec(vert, prec)));
                 }
                 s.addChild("vertices", verticesArray);
 
@@ -817,44 +790,16 @@ public class ComplexShape implements Shape {
                 s.addChild("triangles", trianglesArray);
 
                 shapes.addChild(s);
-            } else if (shape instanceof DrawableCircle) {
-                DrawableCircle c = (DrawableCircle) shape;
-                JsonValue s = new JsonValue(JsonValue.ValueType.object);
-                s.addChild("type", new JsonValue("circle"));
-
-                JsonValue colorArray = new JsonValue(JsonValue.ValueType.array);                colorArray.addChild(new JsonValue(c.getColor().r));
-                colorArray.addChild(new JsonValue(c.getColor().g));
-                colorArray.addChild(new JsonValue(c.getColor().b));
-                colorArray.addChild(new JsonValue(c.getColor().a));
-                s.addChild("color", colorArray);
-
-                JsonValue paramsArray = new JsonValue(JsonValue.ValueType.array);
-                paramsArray.addChild(new JsonValue(c.getCenter().x));
-                paramsArray.addChild(new JsonValue(c.getCenter().y));
-                paramsArray.addChild(new JsonValue(c.getRadius()));
-                paramsArray.addChild(new JsonValue(c.getSegments()));
-                s.addChild("params", paramsArray);
-
-                shapes.addChild(s);
             }
         }
-
         json.addChild("shapes", shapes);
-
-        if (saveAnim && animations.length > 0) {
-            JsonValue jsonAnimations = new JsonValue(JsonValue.ValueType.array);
-            for (Animation anim : animations)
-                jsonAnimations.addChild(anim.toJson());
-            json.addChild("animation", jsonAnimations);
-        }
-
         return json;
     }
 
 
     public String toString() {
-        String s = String.format(" [id:%s origin:(%.1f,%.1f) children:%d]",
+        String s = String.format(" [id: %s origin: %.1f %.1f  children: %d]",
                 id, localOrigin.x, localOrigin.y, children.size());
-        return "ComplexShape@" + Integer.toHexString(hashCode()) + s;
+        return super.toString() + s;
     }
 }

@@ -28,4 +28,9 @@ public class TFSin extends TimeFunction {
                         sin(PI2 * (time * 1f/((float) params[0].getValue()) +
                                 (float) params[3].getValue()/360.0f) );
     }
+
+    @Override
+    public void reset() {
+        value = 0f;
+    }
 }

@@ -3,6 +3,7 @@
   * TimeFunctions can be shared between many Animations (cloned animations)
   * Json data file type version 2
   * Vertices coordinates are rounded (to a precision of 1/255) by default when exporting to json
+  * Renderers can draw with a fixed color (lockColor/unlockColor functions)
   * TimeFunction EaseFromTo start in DELAY state
   * Fixed ComplexShape.contains() bug when scaleX or scaleY is 0
   * Lots of refactoring

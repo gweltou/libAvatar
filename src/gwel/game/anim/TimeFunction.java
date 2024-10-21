@@ -9,6 +9,15 @@ public abstract class TimeFunction {
     public static final int RUNNING = 1;
     public static final int DELAY = 2;
     public static final int REVERSE = 3;
+    public static final Class[] functionClasses = {
+            //TFConstant.class,
+            TFEaseFromTo.class,
+            TFTimetable.class,
+            TFSin.class,
+            TFSpin.class,
+            TFRandomEase.class,
+            TFRandomBlink.class,
+    };
 
     protected TFParam<Object>[] params;
     protected float time = 0.f;
@@ -78,7 +87,7 @@ public abstract class TimeFunction {
     }
 
     public void reset() {
-        time = 0;
+        time = 0f;
     }
 
     public float getValue() { return value; };
